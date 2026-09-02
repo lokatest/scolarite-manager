@@ -456,13 +456,28 @@ export async function getReceiptDownloadUrl(requestId: string) {
   } = await supabase.auth.getUser();
   if (!user) return { error: "Session expirée, reconnectez-vous." };
 
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    .single();
+
   const { data: request } = await supabase
     .from("payment_requests")
     .select("status, receipt_path")
     .eq("id", requestId)
     .single();
 
-  if (!request || request.status !== "terminee") {
+  if (!request) return { error: "Demande introuvable." };
+
+  // L'admin peut consulter le reçu dès la validation, pour vérification,
+  // sans attendre que le gestionnaire marque la demande "terminée". Les
+  // gestionnaires, eux, doivent toujours attendre ce statut.
+  const isAllowed =
+    request.status === "terminee" ||
+    (request.status === "validee" && profile?.role === "admin");
+
+  if (!isAllowed) {
     return { error: "Le reçu n'est disponible qu'une fois la demande marquée terminée." };
   }
   if (!request.receipt_path) {

@@ -4,7 +4,6 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import PaymentRequestForm from "@/components/PaymentRequestForm";
 import RequestValidationActions from "@/components/RequestValidationActions";
-import PaymentProofViewer from "@/components/PaymentProofViewer";
 import StatusPill from "@/components/StatusPill";
 import type { PaymentProof, PaymentRequest, Profile, Student } from "@/lib/types";
 
@@ -193,10 +192,6 @@ export default async function StudentDetailPage({
                       recuEcobank={r.recu_ecobank}
                       proofPath={proofsByRequest[r.id]?.[0]?.storage_path || null}
                     />
-                  </div>
-
-                  <div className="mt-4">
-                    <PaymentProofViewer proofs={proofsByRequest[r.id] || []} />
                   </div>
                 </li>
               ))}

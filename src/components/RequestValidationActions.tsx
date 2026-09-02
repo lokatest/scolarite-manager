@@ -174,7 +174,7 @@ export default function RequestValidationActions({
           </button>
         )}
 
-        {status === "terminee" && (
+        {(status === "terminee" || (status === "validee" && role === "admin")) && (
           <button
             disabled={isDownloading}
             onClick={handleDownloadReceipt}
@@ -186,7 +186,7 @@ export default function RequestValidationActions({
           </button>
         )}
 
-        {status === "terminee" && role === "admin" && (
+        {(status === "terminee" || status === "validee") && role === "admin" && (
           <button
             disabled={isPending}
             onClick={() => act(() => regenerateReceipt(requestId, studentId))}
