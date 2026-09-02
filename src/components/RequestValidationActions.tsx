@@ -57,13 +57,28 @@ export default function RequestValidationActions({
   async function handleDownloadReceipt() {
     setDownloadError(null);
     setIsDownloading(true);
+
+    // Safari (notamment sur iPhone) bloque les fenêtres ouvertes après un
+    // appel asynchrone, car ce n'est plus considéré comme une action directe
+    // de l'utilisateur. On ouvre donc l'onglet immédiatement (de façon
+    // synchrone, au clic), puis on lui donne l'adresse une fois récupérée.
+    const newTab = window.open("", "_blank");
+
     const res = await getReceiptDownloadUrl(requestId);
     setIsDownloading(false);
+
     if (res.error) {
       setDownloadError(res.error);
+      newTab?.close();
       return;
     }
-    if (res.url) window.open(res.url, "_blank");
+    if (res.url && newTab) {
+      newTab.location.href = res.url;
+    } else if (res.url) {
+      // Si le navigateur a quand même bloqué l'ouverture, on retente une
+      // dernière fois directement (couvre les cas restants).
+      window.open(res.url, "_blank");
+    }
   }
 
   function act(action: () => Promise<{ error?: string } | undefined>) {

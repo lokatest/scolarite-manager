@@ -139,6 +139,21 @@ export default function PaymentRequestForm({ studentId }: { studentId: string })
             Capture de la transaction
           </label>
 
+          {amount > 0 && (
+            <div className="rounded-lg bg-emerald-50 border border-emerald-200 px-3.5 py-2.5 mb-3">
+              <p className="text-sm text-[var(--tts-dark)]">
+                La somme à verser est :{" "}
+                <span className="font-bold text-emerald-700">
+                  {Math.max(0, Math.round(amount - amount * 0.1825 - 6000)).toLocaleString(
+                    "fr-FR"
+                  )}{" "}
+                  FCFA
+                </span>
+                , exonéré des commissions
+              </p>
+            </div>
+          )}
+
           {!previewUrl ? (
             <label className="flex flex-col items-center justify-center gap-1.5 rounded-lg border-2 border-dashed border-[var(--tts-border)] py-8 cursor-pointer hover:bg-[var(--tts-bg)] transition text-center">
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--tts-text-muted)" strokeWidth="1.7">
@@ -173,19 +188,6 @@ export default function PaymentRequestForm({ studentId }: { studentId: string })
             </div>
           )}
         </div>
-
-        {amount > 0 && (
-          <div className="rounded-lg bg-[var(--tts-blue)]/5 border border-[var(--tts-blue)]/20 px-3.5 py-2.5">
-            <p className="text-xs text-[var(--tts-text-muted)]">
-              La somme à verser est :{" "}
-              <span className="font-semibold text-[var(--tts-dark)]">
-                {Math.max(0, Math.round(amount - amount * 0.1825 - 6000)).toLocaleString("fr-FR")}{" "}
-                FCFA
-              </span>
-              , exonéré des commissions
-            </p>
-          </div>
-        )}
 
         <div className="flex gap-3 pt-1">
           <button
