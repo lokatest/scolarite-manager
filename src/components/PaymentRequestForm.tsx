@@ -129,7 +129,7 @@ export default function PaymentRequestForm({ studentId }: { studentId: string })
           <input
             name="recu_ecobank"
             required
-            placeholder="ex : ECB-2026-000123"
+            placeholder="ex : 1793508"
             className="w-full rounded-lg border border-[var(--tts-border)] px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--tts-blue)]"
           />
         </div>

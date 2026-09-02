@@ -250,7 +250,7 @@ export default function StudentsExplorer({
                 <label className="block text-sm font-medium text-[var(--tts-dark)] mb-1.5">
                   Matricule
                 </label>
-                <UppercaseInput name="matricule" />
+                <UppercaseInput name="matricule" placeholder="ex : LS24I026TC" />
               </div>
               <div>
                 <label className="block text-sm font-medium text-[var(--tts-dark)] mb-1.5">

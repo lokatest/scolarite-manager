@@ -23,21 +23,10 @@ export async function getReceiptTemplateInfo() {
  */
 export async function getReceiptTemplateBytes(): Promise<Uint8Array | null> {
   const supabase = await createClient();
-  const { data: row } = await supabase
-    .from("receipt_templates")
-    .select("docx_path")
-    .eq("id", "default")
-    .maybeSingle();
-
-  if (!row?.docx_path) return null;
-
-  const { data, error } = await supabase.storage
-    .from("receipt-templates")
-    .download(row.docx_path);
-
-  if (error || !data) return null;
-  const arrayBuffer = await data.arrayBuffer();
-  return new Uint8Array(arrayBuffer);
+  const { getReceiptTemplateBytesWithClient } = await import(
+    "@/lib/receipt/getTemplateBytes"
+  );
+  return getReceiptTemplateBytesWithClient(supabase);
 }
 
 export async function uploadReceiptTemplate(formData: FormData) {
@@ -98,19 +87,34 @@ export async function uploadReceiptTemplate(formData: FormData) {
  * en production.
  */
 export async function generatePreviewReceipt() {
-  const { generateReceiptPdf } = await import("@/lib/receipt/generateReceiptPdf");
-
   const bytes = await getReceiptTemplateBytes();
   if (!bytes) return { error: "Aucun template n'a encore été chargé." };
 
   try {
-    const { bytes: pdfBytes } = await generateReceiptPdf({
-      templateBytes: bytes,
-      studentFullName: "JEAN DUPONT MBALLA (EXEMPLE)",
-      amount: 125000,
-      recuEcobank: "ECB-2026-000123",
-      validatedAt: new Date(),
-    });
+    const { fillDocxTemplate } = await import("@/lib/receipt/docxTokenReplace");
+    const { amountToFrenchWords } = await import("@/lib/receipt/amountToWords");
+    const { generateReceiptReference } = await import("@/lib/receipt/generateReference");
+    const { convertDocxToPdfViaILoveApi } = await import("@/lib/receipt/iloveApi");
+
+    const reference = generateReceiptReference();
+    const now = new Date();
+    const hh = String(now.getHours()).padStart(2, "0");
+    const mm = String(now.getMinutes()).padStart(2, "0");
+    const dd = String(now.getDate()).padStart(2, "0");
+    const mo = String(now.getMonth() + 1).padStart(2, "0");
+
+    const values = {
+      "{{DATE}}": `${dd}-${mo}-${now.getFullYear()}`,
+      "{{HEURE}}": `${hh}:${mm} ${now.getHours() < 12 ? "AM" : "PM"}`,
+      "{{MONTANT_LETTRE}}": amountToFrenchWords(125000),
+      "{{MONTANT_CHIFFRE}}": (125000).toLocaleString("en-US"),
+      "{{REFERENCE}}": reference,
+      "{{NUMERO}}": "1793508",
+      "{{NOM_COMPLET}}": "JEAN DUPONT MBALLA (EXEMPLE)",
+    };
+
+    const { bytes: filledDocx } = await fillDocxTemplate(bytes, values);
+    const pdfBytes = await convertDocxToPdfViaILoveApi(filledDocx);
 
     const base64 = Buffer.from(pdfBytes).toString("base64");
     return { dataUrl: `data:application/pdf;base64,${base64}` };

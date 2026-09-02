@@ -106,12 +106,6 @@ export async function updatePaymentRequestStatus(
 
   const validatedAt = new Date();
 
-  const { data: requestRow } = await supabase
-    .from("payment_requests")
-    .select("amount, recu_ecobank, student:students(full_name)")
-    .eq("id", requestId)
-    .single();
-
   const { error } = await supabase
     .from("payment_requests")
     .update({
@@ -123,41 +117,27 @@ export async function updatePaymentRequestStatus(
 
   if (error) return { error: "Erreur : " + error.message };
 
-  // Génère et stocke automatiquement le reçu PDF au moment de la validation
-  // (il ne sera téléchargeable qu'une fois la demande marquée "terminée")
-  if (newStatus === "validee" && requestRow) {
-    try {
-      const { generateReceiptPdf } = await import("@/lib/receipt/generateReceiptPdf");
-      const { getReceiptTemplateBytes } = await import("@/lib/actions/receiptTemplate");
-      const studentInfo = requestRow.student as unknown as { full_name: string } | null;
-      const templateBytes = await getReceiptTemplateBytes();
-
-      if (templateBytes) {
-        const { bytes, reference } = await generateReceiptPdf({
-          templateBytes,
-          studentFullName: studentInfo?.full_name || "",
-          amount: Number(requestRow.amount),
-          recuEcobank: requestRow.recu_ecobank || "",
-          validatedAt,
-        });
-
-        const path = `${requestId}.pdf`;
-        const { error: uploadError } = await supabase.storage
-          .from("receipts")
-          .upload(path, bytes, { contentType: "application/pdf", upsert: true });
-
-        if (!uploadError) {
-          await supabase
-            .from("payment_requests")
-            .update({ receipt_path: path, receipt_reference: reference })
-            .eq("id", requestId);
-        }
+  // La génération du reçu (appel à iLoveAPI) est différée APRÈS l'envoi
+  // de cette réponse, via `after()` : l'admin n'attend pas ce traitement,
+  // ce qui rend la validation instantanée. Un système de nouvelle tentative
+  // automatique (immédiate + différée via tâche planifiée) prend le relais
+  // en cas d'échec, sans jamais bloquer l'utilisateur.
+  if (newStatus === "validee") {
+    const { after } = await import("next/server");
+    after(async () => {
+      const { attemptReceiptGeneration } = await import(
+        "@/lib/receipt/attemptReceiptGeneration"
+      );
+      const bgSupabase = await createClient();
+      const first = await attemptReceiptGeneration(bgSupabase, requestId);
+      if (!first.success) {
+        // Une seule nouvelle tentative immédiate (couvre les pannes très
+        // courtes) ; au-delà, la tâche planifiée /api/retry-receipts prend
+        // le relais en arrière-plan, sans solliciter l'utilisateur.
+        await new Promise((r) => setTimeout(r, 4000));
+        await attemptReceiptGeneration(bgSupabase, requestId);
       }
-    } catch (e) {
-      // La validation reste effective même si la génération du reçu échoue ;
-      // on journalise l'erreur exacte pour pouvoir la diagnostiquer.
-      console.error("Erreur de génération du reçu à la validation :", e);
-    }
+    });
   }
 
   revalidatePath(`/dashboard/students/${studentId}`);
@@ -520,7 +500,7 @@ export async function regenerateReceipt(requestId: string, studentId: string) {
 
   const { data: requestRow } = await supabase
     .from("payment_requests")
-    .select("amount, recu_ecobank, validated_at, student:students(full_name)")
+    .select("validated_at")
     .eq("id", requestId)
     .single();
 
@@ -529,45 +509,23 @@ export async function regenerateReceipt(requestId: string, studentId: string) {
     return { error: "Cette demande n'a pas encore été validée." };
   }
 
-  try {
-    const { generateReceiptPdf } = await import("@/lib/receipt/generateReceiptPdf");
-    const { getReceiptTemplateBytes } = await import("@/lib/actions/receiptTemplate");
-    const studentInfo = requestRow.student as unknown as { full_name: string } | null;
-    const templateBytes = await getReceiptTemplateBytes();
+  // Action manuelle explicite : on réinitialise le compteur de tentatives
+  // pour permettre à l'admin de relancer même après un échec définitif.
+  await supabase
+    .from("payment_requests")
+    .update({ receipt_attempts: 0, receipt_status: "none" })
+    .eq("id", requestId);
 
-    if (!templateBytes) {
-      return {
-        error:
-          "Aucun template Word n'a été chargé. Allez dans Administration → Template du reçu pour en charger un.",
-      };
-    }
+  const { attemptReceiptGeneration } = await import(
+    "@/lib/receipt/attemptReceiptGeneration"
+  );
+  const result = await attemptReceiptGeneration(supabase, requestId);
 
-    const { bytes, reference } = await generateReceiptPdf({
-      templateBytes,
-      studentFullName: studentInfo?.full_name || "",
-      amount: Number(requestRow.amount),
-      recuEcobank: requestRow.recu_ecobank || "",
-      validatedAt: new Date(requestRow.validated_at),
-    });
-
-    const path = `${requestId}.pdf`;
-    const { error: uploadError } = await supabase.storage
-      .from("receipts")
-      .upload(path, bytes, { contentType: "application/pdf", upsert: true });
-
-    if (uploadError) return { error: "Erreur de stockage : " + uploadError.message };
-
-    const { error: dbError } = await supabase
-      .from("payment_requests")
-      .update({ receipt_path: path, receipt_reference: reference })
-      .eq("id", requestId);
-
-    if (dbError) return { error: "Erreur : " + dbError.message };
-
-    revalidatePath(`/dashboard/students/${studentId}`);
-    revalidatePath("/dashboard/requests");
-    return { success: true };
-  } catch (e) {
-    return { error: "Échec de la génération du reçu : " + (e as Error).message };
+  if (!result.success) {
+    return { error: result.error || "Échec de la génération du reçu." };
   }
+
+  revalidatePath(`/dashboard/students/${studentId}`);
+  revalidatePath("/dashboard/requests");
+  return { success: true };
 }
