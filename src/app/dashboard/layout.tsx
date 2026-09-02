@@ -11,7 +11,7 @@ export default async function DashboardLayout({
   const profile = await getCurrentProfile();
 
   return (
-    <div className="flex min-h-screen bg-[var(--tts-bg)]">
+    <div className="flex flex-col lg:flex-row min-h-screen bg-[var(--tts-bg)]">
       <RealtimeRefresher />
       <InactivityLogout />
       <Sidebar profile={profile} />

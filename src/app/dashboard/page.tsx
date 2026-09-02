@@ -48,7 +48,7 @@ export default async function DashboardOverview() {
         title={`Bonjour, ${profile.full_name.split(" ")[0]}`}
         subtitle="Voici un aperçu de l'activité de la plateforme"
       />
-      <div className="p-8 space-y-8">
+      <div className="p-4 sm:p-8 space-y-8">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {stats.map((s) => (
             <div

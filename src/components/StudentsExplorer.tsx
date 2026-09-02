@@ -138,7 +138,7 @@ export default function StudentsExplorer({
         </button>
       </div>
 
-      <div className="bg-white rounded-2xl border border-[var(--tts-border)] shadow-sm overflow-hidden">
+      <div className="bg-white rounded-2xl border border-[var(--tts-border)] shadow-sm overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-[var(--tts-border)] bg-[var(--tts-bg)]/60 text-left">

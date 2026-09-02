@@ -23,8 +23,8 @@ export default async function AdminUsersPage() {
         title="Utilisateurs"
         subtitle="Gérez les comptes autorisés à modifier les données de la plateforme"
       />
-      <div className="p-8 max-w-3xl">
-        <div className="bg-white rounded-2xl border border-[var(--tts-border)] shadow-sm overflow-hidden">
+      <div className="p-4 sm:p-8 max-w-3xl">
+        <div className="bg-white rounded-2xl border border-[var(--tts-border)] shadow-sm overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-[var(--tts-border)] bg-[var(--tts-bg)]/60 text-left">

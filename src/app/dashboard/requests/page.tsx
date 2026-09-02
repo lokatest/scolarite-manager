@@ -27,7 +27,7 @@ export default async function RequestsPage() {
         title="Requêtes en cours"
         subtitle="Toutes les demandes de paiement, classées de la plus récente à la plus ancienne"
       />
-      <div className="p-8 max-w-4xl">
+      <div className="p-4 sm:p-8 max-w-4xl">
         <RequestsExplorer initialRequests={requests} role={profile.role} />
       </div>
     </div>

@@ -30,7 +30,7 @@ export default async function ClaimsPage() {
         title="Réclamations"
         subtitle="Signalez un problème ou demandez une modification, traité par l'administrateur"
       />
-      <div className="p-8 max-w-3xl">
+      <div className="p-4 sm:p-8 max-w-3xl">
         {profile.role === "user" && <CreateClaimForm />}
 
         <div className="space-y-8">

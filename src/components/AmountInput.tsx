@@ -11,10 +11,12 @@ export default function AmountInput({
   name,
   defaultValue,
   required = true,
+  onValueChange,
 }: {
   name: string;
   defaultValue?: number | string;
   required?: boolean;
+  onValueChange?: (rawValue: number) => void;
 }) {
   const [display, setDisplay] = useState(
     defaultValue ? formatThousands(String(defaultValue).replace(/\D/g, "")) : ""
@@ -24,6 +26,7 @@ export default function AmountInput({
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     const digitsOnly = e.target.value.replace(/\D/g, "");
     setDisplay(formatThousands(digitsOnly));
+    onValueChange?.(digitsOnly ? Number(digitsOnly) : 0);
   }
 
   return (

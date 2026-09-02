@@ -44,10 +44,14 @@ export default function ClaimCard({ claim, role }: { claim: Claim; role: Role })
   return (
     <li className="bg-white rounded-2xl border border-[var(--tts-border)] shadow-sm p-5">
       <div className="flex items-start justify-between gap-4 flex-wrap">
-        <div>
-          <p className="font-display font-semibold text-[var(--tts-dark)]">{claim.title}</p>
+        <div className="min-w-0 flex-1">
+          <p className="font-display font-semibold text-[var(--tts-dark)] break-words">
+            {claim.title}
+          </p>
           {claim.description && (
-            <p className="text-sm text-[var(--tts-text-muted)] mt-1">{claim.description}</p>
+            <p className="text-sm text-[var(--tts-text-muted)] mt-1 break-words whitespace-pre-wrap">
+              {claim.description}
+            </p>
           )}
         </div>
         <StatusPill status={claim.status} />

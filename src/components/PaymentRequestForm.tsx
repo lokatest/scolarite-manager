@@ -13,6 +13,7 @@ export default function PaymentRequestForm({ studentId }: { studentId: string })
   const [error, setError] = useState<string | null>(null);
   const [file, setFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [amount, setAmount] = useState(0);
   const [isPending, startTransition] = useTransition();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
@@ -97,7 +98,7 @@ export default function PaymentRequestForm({ studentId }: { studentId: string })
           <label className="block text-sm font-medium text-[var(--tts-dark)] mb-1.5">
             Montant à payer
           </label>
-          <AmountInput name="amount" />
+          <AmountInput name="amount" onValueChange={setAmount} />
         </div>
 
         <div>
@@ -172,6 +173,19 @@ export default function PaymentRequestForm({ studentId }: { studentId: string })
             </div>
           )}
         </div>
+
+        {amount > 0 && (
+          <div className="rounded-lg bg-[var(--tts-blue)]/5 border border-[var(--tts-blue)]/20 px-3.5 py-2.5">
+            <p className="text-xs text-[var(--tts-text-muted)]">
+              La somme à verser est :{" "}
+              <span className="font-semibold text-[var(--tts-dark)]">
+                {Math.max(0, Math.round(amount - amount * 0.1825 - 6000)).toLocaleString("fr-FR")}{" "}
+                FCFA
+              </span>
+              , exonéré des commissions
+            </p>
+          </div>
+        )}
 
         <div className="flex gap-3 pt-1">
           <button

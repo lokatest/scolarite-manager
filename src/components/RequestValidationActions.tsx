@@ -8,6 +8,7 @@ import {
   deletePaymentRequest,
   getReceiptDownloadUrl,
   regenerateReceipt,
+  getSignedProofUrl,
 } from "@/lib/actions/payments";
 import type { PaymentStatus, Role } from "@/lib/types";
 import Spinner from "./Spinner";
@@ -38,6 +39,20 @@ export default function RequestValidationActions({
   const [error, setError] = useState<string | null>(null);
   const [isDownloading, setIsDownloading] = useState(false);
   const [downloadError, setDownloadError] = useState<string | null>(null);
+  const [proofUrl, setProofUrl] = useState<string | null>(null);
+  const [isLoadingProof, setIsLoadingProof] = useState(false);
+
+  async function handleViewProof() {
+    if (proofUrl) {
+      setProofUrl(null);
+      return;
+    }
+    if (!proofPath) return;
+    setIsLoadingProof(true);
+    const res = await getSignedProofUrl(proofPath);
+    setIsLoadingProof(false);
+    if (res.url) setProofUrl(res.url);
+  }
 
   async function handleDownloadReceipt() {
     setDownloadError(null);
@@ -96,6 +111,17 @@ export default function RequestValidationActions({
           >
             {isPending && <Spinner size={12} />}
             Supprimer
+          </button>
+        )}
+
+        {proofPath && (
+          <button
+            disabled={isLoadingProof}
+            onClick={handleViewProof}
+            className="px-3 py-1.5 rounded-lg text-xs font-semibold border border-[var(--tts-border)] text-[var(--tts-dark)] hover:bg-[var(--tts-bg)] transition disabled:opacity-50 inline-flex items-center gap-1.5"
+          >
+            {isLoadingProof && <Spinner size={12} />}
+            {proofUrl ? "Masquer la preuve" : "Voir la preuve"}
           </button>
         )}
 
@@ -159,6 +185,15 @@ export default function RequestValidationActions({
 
       {downloadError && (
         <p className="text-xs text-red-600 mt-2 text-right">{downloadError}</p>
+      )}
+
+      {proofUrl && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={proofUrl}
+          alt="Capture de la transaction"
+          className="mt-3 rounded-lg max-h-80 w-auto border border-[var(--tts-border)] ml-auto"
+        />
       )}
 
       {showEdit && (

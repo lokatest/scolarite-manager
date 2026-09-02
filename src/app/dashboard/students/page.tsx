@@ -19,7 +19,7 @@ export default async function StudentsPage() {
         title="Étudiants"
         subtitle="Recherchez, consultez et créez des profils étudiants"
       />
-      <div className="p-8">
+      <div className="p-4 sm:p-8">
         <StudentsExplorer initialStudents={(data || []) as Student[]} role={profile.role} />
       </div>
     </div>

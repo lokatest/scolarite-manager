@@ -90,6 +90,7 @@ export default function CreateClaimForm() {
           <input
             name="title"
             required
+            maxLength={150}
             placeholder="ex : Erreur sur le montant d'une demande"
             className="w-full rounded-lg border border-[var(--tts-border)] px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--tts-blue)]"
           />
