@@ -6,19 +6,7 @@ import PaymentRequestForm from "@/components/PaymentRequestForm";
 import RequestValidationActions from "@/components/RequestValidationActions";
 import StatusPill from "@/components/StatusPill";
 import type { PaymentProof, PaymentRequest, Profile, Student } from "@/lib/types";
-
-function formatDateTime(iso: string | null | undefined) {
-  if (!iso) return "—";
-  const date = new Date(iso);
-  if (isNaN(date.getTime())) return "—";
-  return date.toLocaleString("fr-FR", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
+import { formatDateTimeCM } from "@/lib/formatDateTime";
 
 export default async function StudentDetailPage({
   params,
@@ -108,7 +96,7 @@ export default async function StudentDetailPage({
                 </span>
                 {profile.role === "admin" && (
                   <span className="text-xs px-2 py-1 rounded-md bg-[var(--tts-bg)] text-[var(--tts-text-muted)] border border-[var(--tts-border)]">
-                    Ajouté le {formatDateTime(typedStudent.created_at)}
+                    Ajouté le {formatDateTimeCM(typedStudent.created_at)}
                   </span>
                 )}
               </div>
@@ -159,7 +147,7 @@ export default async function StudentDetailPage({
                       <span className="font-medium text-[var(--tts-dark)]">
                         {r.requested_by_profile?.full_name ?? "—"}
                       </span>{" "}
-                      le {formatDateTime(r.requested_at)}
+                      le {formatDateTimeCM(r.requested_at)}
                     </p>
                     {r.validated_at && (
                       <p>
@@ -167,7 +155,7 @@ export default async function StudentDetailPage({
                         <span className="font-medium text-[var(--tts-dark)]">
                           {r.validated_by_profile?.full_name ?? "—"}
                         </span>{" "}
-                        le {formatDateTime(r.validated_at)}
+                        le {formatDateTimeCM(r.validated_at)}
                       </p>
                     )}
                     {r.terminee_at && (
@@ -176,7 +164,7 @@ export default async function StudentDetailPage({
                         <span className="font-medium text-[var(--tts-dark)]">
                           {r.terminee_by_profile?.full_name ?? "—"}
                         </span>{" "}
-                        le {formatDateTime(r.terminee_at)}
+                        le {formatDateTimeCM(r.terminee_at)}
                       </p>
                     )}
                   </div>

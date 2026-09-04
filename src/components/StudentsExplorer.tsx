@@ -13,26 +13,20 @@ import EditStudentModal from "./EditStudentModal";
 import EditStudentLimitedModal from "./EditStudentLimitedModal";
 import type { Role, Student } from "@/lib/types";
 
-function formatDate(iso: string | null | undefined) {
-  if (!iso) return "—";
-  const date = new Date(iso);
-  if (isNaN(date.getTime())) return "—";
-  return date.toLocaleDateString("fr-FR", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-  });
-}
+type StudentWithCreator = Student & {
+  created_by_profile?: { full_name: string } | null;
+};
+import { formatDateCM } from "@/lib/formatDateTime";
 
 export default function StudentsExplorer({
   initialStudents,
   role,
 }: {
-  initialStudents: Student[];
+  initialStudents: StudentWithCreator[];
   role: Role;
 }) {
   const router = useRouter();
-  const [students, setStudents] = useState<Student[]>(initialStudents);
+  const [students, setStudents] = useState<StudentWithCreator[]>(initialStudents);
   const [query, setQuery] = useState("");
   const [isPending, startTransition] = useTransition();
   const [showModal, setShowModal] = useState(false);
@@ -53,7 +47,7 @@ export default function StudentsExplorer({
     debounceRef.current = setTimeout(() => {
       startTransition(async () => {
         const res = await searchStudents(query);
-        setStudents(res.data as Student[]);
+        setStudents(res.data as StudentWithCreator[]);
       });
     }, 250);
     return () => {
@@ -64,7 +58,7 @@ export default function StudentsExplorer({
   function refreshList() {
     startTransition(async () => {
       const r = await searchStudents(query);
-      setStudents(r.data as Student[]);
+      setStudents(r.data as StudentWithCreator[]);
     });
     router.refresh();
   }
@@ -179,7 +173,10 @@ export default function StudentsExplorer({
                 </td>
                 {role === "admin" && (
                   <td className="px-6 py-3.5 text-[var(--tts-text-muted)] text-xs">
-                    {formatDate(s.created_at)}
+                    {formatDateCM(s.created_at)}
+                    {s.created_by_profile?.full_name && (
+                      <> par : {s.created_by_profile.full_name}</>
+                    )}
                   </td>
                 )}
                 {showActionsColumn && (
@@ -241,8 +238,7 @@ export default function StudentsExplorer({
             )}
             {role === "user" && (
               <div className="mb-4 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-xs px-3.5 py-2.5">
-                Après création, vous ne pourrez plus apporter de modification aux informations de
-                cet étudiant, ni le supprimer.
+                Après création, vous ne pourrez plus supprimer cet étudiant.
               </div>
             )}
             <form action={handleCreate} className="space-y-4">

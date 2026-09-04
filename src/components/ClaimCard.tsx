@@ -8,19 +8,7 @@ import Spinner from "./Spinner";
 import EditClaimModal from "./EditClaimModal";
 import ClaimPhotosViewer from "./ClaimPhotosViewer";
 import type { Claim, Role } from "@/lib/types";
-
-function formatDateTime(iso: string | null | undefined) {
-  if (!iso) return "—";
-  const date = new Date(iso);
-  if (isNaN(date.getTime())) return "—";
-  return date.toLocaleString("fr-FR", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
+import { formatDateTimeCM } from "@/lib/formatDateTime";
 
 export default function ClaimCard({ claim, role }: { claim: Claim; role: Role }) {
   const router = useRouter();
@@ -65,7 +53,7 @@ export default function ClaimCard({ claim, role }: { claim: Claim; role: Role })
           <span className="font-medium text-[var(--tts-dark)]">
             {claim.created_by_profile?.full_name ?? "—"}
           </span>{" "}
-          le {formatDateTime(claim.created_at)}
+          le {formatDateTimeCM(claim.created_at)}
         </p>
         {claim.validated_at && (
           <p>
@@ -73,7 +61,7 @@ export default function ClaimCard({ claim, role }: { claim: Claim; role: Role })
             <span className="font-medium text-[var(--tts-dark)]">
               {claim.validated_by_profile?.full_name ?? "—"}
             </span>{" "}
-            le {formatDateTime(claim.validated_at)}
+            le {formatDateTimeCM(claim.validated_at)}
           </p>
         )}
       </div>

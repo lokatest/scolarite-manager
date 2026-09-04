@@ -7,25 +7,13 @@ import StatusPill from "./StatusPill";
 import RequestValidationActions from "./RequestValidationActions";
 import Spinner from "./Spinner";
 import type { PaymentRequest, Profile, Role, Student } from "@/lib/types";
+import { formatDateTimeCM } from "@/lib/formatDateTime";
 
 type FullRequest = PaymentRequest & {
   student: Student;
   requested_by_profile: Profile | null;
   payment_proofs?: { storage_path: string }[];
 };
-
-function formatDateTime(iso: string | null | undefined) {
-  if (!iso) return "—";
-  const date = new Date(iso);
-  if (isNaN(date.getTime())) return "—";
-  return date.toLocaleString("fr-FR", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
 
 export default function RequestsExplorer({
   initialRequests,
@@ -165,16 +153,16 @@ function RequestRow({ r, role }: { r: FullRequest; role: Role }) {
         <span className="font-medium text-[var(--tts-dark)]">
           {r.requested_by_profile?.full_name ?? "—"}
         </span>{" "}
-        le {formatDateTime(r.requested_at)}
+        le {formatDateTimeCM(r.requested_at)}
       </p>
       {r.validated_at && (
         <p className="text-xs text-[var(--tts-text-muted)] mt-1">
-          {r.status === "rejetee" ? "Rejetée" : "Validée"} le {formatDateTime(r.validated_at)}
+          {r.status === "rejetee" ? "Rejetée" : "Validée"} le {formatDateTimeCM(r.validated_at)}
         </p>
       )}
       {r.terminee_at && (
         <p className="text-xs text-[var(--tts-text-muted)] mt-1">
-          Marquée terminée le {formatDateTime(r.terminee_at)}
+          Marquée terminée le {formatDateTimeCM(r.terminee_at)}
         </p>
       )}
       <div className="mt-3">

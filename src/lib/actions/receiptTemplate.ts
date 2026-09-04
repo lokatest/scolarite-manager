@@ -98,14 +98,12 @@ export async function generatePreviewReceipt() {
 
     const reference = generateReceiptReference();
     const now = new Date();
-    const hh = String(now.getHours()).padStart(2, "0");
-    const mm = String(now.getMinutes()).padStart(2, "0");
-    const dd = String(now.getDate()).padStart(2, "0");
-    const mo = String(now.getMonth() + 1).padStart(2, "0");
+    const { getDatePartsCM } = await import("@/lib/formatDateTime");
+    const { day, month, year, hour24, minute } = getDatePartsCM(now);
 
     const values = {
-      "{{DATE}}": `${dd}-${mo}-${now.getFullYear()}`,
-      "{{HEURE}}": `${hh}:${mm} ${now.getHours() < 12 ? "AM" : "PM"}`,
+      "{{DATE}}": `${day}-${month}-${year}`,
+      "{{HEURE}}": `${String(hour24).padStart(2, "0")}:${minute} ${hour24 < 12 ? "AM" : "PM"}`,
       "{{MONTANT_LETTRE}}": amountToFrenchWords(125000),
       "{{MONTANT_CHIFFRE}}": (125000).toLocaleString("en-US"),
       "{{REFERENCE}}": reference,

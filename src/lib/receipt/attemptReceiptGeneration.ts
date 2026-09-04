@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { startAndUpload, downloadResult } from "./iloveApi";
+import { getDatePartsCM } from "@/lib/formatDateTime";
 
 const MAX_ATTEMPTS = 3;
 
@@ -20,16 +21,19 @@ async function generateFullReceipt(
   function formatAmountThousands(amount: number) {
     return Math.round(amount).toLocaleString("en-US");
   }
+  // Les composants de date/heure sont extraits explicitement dans le
+  // fuseau horaire du Cameroun (voir getDatePartsCM), pour ne jamais
+  // dépendre du fuseau horaire du serveur qui exécute ce code (Vercel
+  // tourne en UTC, ce qui causait un décalage d'1h sur le reçu).
   function formatDateFr(date: Date) {
-    const dd = String(date.getDate()).padStart(2, "0");
-    const mm = String(date.getMonth() + 1).padStart(2, "0");
-    return `${dd}-${mm}-${date.getFullYear()}`;
+    const { day, month, year } = getDatePartsCM(date);
+    return `${day}-${month}-${year}`;
   }
   function formatTimeWithPeriod(date: Date) {
-    const hours = date.getHours();
-    const minutes = String(date.getMinutes()).padStart(2, "0");
-    const hh = String(hours).padStart(2, "0");
-    return `${hh}:${minutes} ${hours < 12 ? "AM" : "PM"}`;
+    const { hour24, minute } = getDatePartsCM(date);
+    const period = hour24 < 12 ? "AM" : "PM";
+    const hh = String(hour24).padStart(2, "0");
+    return `${hh}:${minute} ${period}`;
   }
 
   const values = {

@@ -24,7 +24,7 @@ export default async function LoginPage({
         <div className="text-center mb-8">
           <div
             className="inline-flex h-14 w-14 items-center justify-center rounded-2xl text-white text-xl font-bold font-display mb-4"
-            style={{ background: "linear-gradient(135deg, var(--tts-dark), var(--tts-blue))" }}
+            style={{ background: "var(--tts-orange)" }}
           >
             SM
           </div>

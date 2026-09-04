@@ -43,7 +43,7 @@ export async function searchStudents(query: string) {
 
   let request = supabase
     .from("students")
-    .select("*")
+    .select("*, created_by_profile:profiles!students_created_by_fkey(full_name)")
     .order("full_name", { ascending: true })
     .limit(50);
 

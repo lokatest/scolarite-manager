@@ -3,6 +3,7 @@
 import { useRef, useState, useTransition } from "react";
 import { uploadReceiptTemplate, generatePreviewReceipt } from "@/lib/actions/receiptTemplate";
 import { RECEIPT_PLACEHOLDERS } from "@/lib/receipt/placeholders";
+import { formatDateTimeCM } from "@/lib/formatDateTime";
 import Spinner from "./Spinner";
 
 export default function ReceiptTemplateManager({
@@ -65,13 +66,7 @@ export default function ReceiptTemplateManager({
               <>
                 {" "}
                 — mis à jour le{" "}
-                {new Date(updatedAt).toLocaleString("fr-FR", {
-                  day: "2-digit",
-                  month: "2-digit",
-                  year: "numeric",
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}
+                {formatDateTimeCM(updatedAt)}
               </>
             )}
           </p>
