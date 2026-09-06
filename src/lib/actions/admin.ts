@@ -46,3 +46,25 @@ export async function setUserRole(userId: string, role: "admin" | "user") {
   revalidatePath("/dashboard/admin/users");
   return { success: true };
 }
+
+export async function updateUserPhone(userId: string, phoneNumber: string) {
+  const { ok, supabase } = await assertAdmin();
+  if (!ok) return { error: "Action réservée aux administrateurs." };
+
+  const trimmed = phoneNumber.replace(/\s+/g, "");
+  if (trimmed && !/^\+[1-9]\d{6,14}$/.test(trimmed)) {
+    return {
+      error:
+        "Le numéro doit être au format international, ex : +237650000000.",
+    };
+  }
+
+  const { error } = await supabase
+    .from("profiles")
+    .update({ phone_number: trimmed || null })
+    .eq("id", userId);
+
+  if (error) return { error: error.message };
+  revalidatePath("/dashboard/admin/users");
+  return { success: true };
+}

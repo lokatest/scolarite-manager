@@ -8,6 +8,7 @@ export interface Profile {
   role: Role;
   is_active: boolean;
   created_at: string;
+  phone_number: string | null;
 }
 
 export interface Student {

@@ -89,6 +89,21 @@ export default async function SignupPage({
                 className="w-full rounded-lg border border-[var(--tts-border)] px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--tts-blue)] focus:border-transparent transition"
               />
             </div>
+            <div>
+              <label className="block text-sm font-medium text-[var(--tts-dark)] mb-1.5">
+                Numéro de téléphone
+              </label>
+              <input
+                name="phone_number"
+                type="tel"
+                required
+                placeholder="+237650000000"
+                className="w-full rounded-lg border border-[var(--tts-border)] px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--tts-blue)] focus:border-transparent transition"
+              />
+              <p className="text-xs text-[var(--tts-text-muted)] mt-1">
+                Format international, avec le +237 pour le Cameroun.
+              </p>
+            </div>
             <SubmitButton
               pendingLabel="Création..."
               className="w-full rounded-lg py-2.5 text-sm font-semibold text-white transition hover:opacity-90 active:scale-[0.99]"

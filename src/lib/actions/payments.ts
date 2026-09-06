@@ -77,6 +77,85 @@ export async function createPaymentRequest(formData: FormData) {
     return { error: "Erreur : " + proofError.message };
   }
 
+  // Notifie tous les administrateurs par SMS qu'une nouvelle demande
+  // attend leur validation. Différé après la réponse (via after()) pour
+  // ne pas faire attendre le gestionnaire qui vient d'envoyer sa demande.
+  // On utilise ici un client à privilèges élevés (clé de service) plutôt
+  // que le client lié à la session de l'utilisateur : une fois la réponse
+  // envoyée, la session ne peut plus être garantie fiable dans after(),
+  // ce qui ferait échouer silencieusement les requêtes protégées par RLS.
+  const { after } = await import("next/server");
+  after(async () => {
+    const { createClient: createServiceClient } = await import("@supabase/supabase-js");
+    const serviceSupabase = createServiceClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
+
+    const { data: student } = await serviceSupabase
+      .from("students")
+      .select("full_name, matricule")
+      .eq("id", student_id)
+      .single();
+
+    const { data: admins, error: adminsError } = await serviceSupabase
+      .from("profiles")
+      .select("phone_number, email")
+      .eq("role", "admin")
+      .eq("is_active", true);
+
+    if (adminsError) {
+      console.error("[Notifications] Erreur lors de la récupération des admins :", adminsError.message);
+    }
+    if (!student || !admins || admins.length === 0) return;
+
+    const messageText = `Demande en attente : ${student.full_name}, ${Math.round(amount).toLocaleString("fr-FR")} FCFA`;
+
+    if (process.env.SMS_NOTIFICATIONS_ENABLED?.trim() === "true") {
+      const numbers = admins.map((a) => a.phone_number).filter((n): n is string => Boolean(n));
+      if (numbers.length > 0) {
+        const { sendSms } = await import("@/lib/sms/twilio");
+        const smsResult = await sendSms(numbers, messageText);
+        if (!smsResult.success) {
+          console.error("[SMS] Échec notification demande initiée :", smsResult.error);
+        }
+      }
+    }
+
+    if (process.env.EMAIL_NOTIFICATIONS_ENABLED?.trim() === "true") {
+      const emails = admins.map((a) => a.email).filter((e): e is string => Boolean(e));
+      console.log("[Email] Adresses admin trouvées pour notification initiation :", JSON.stringify(emails));
+      if (emails.length > 0) {
+        const { sendEmail } = await import("@/lib/email/sendgrid");
+        const { buildNotificationEmailHtml } = await import("@/lib/email/emailTemplate");
+        const html = buildNotificationEmailHtml({
+          title: "Nouvelle demande de paiement en attente",
+          statusLabel: "EN ATTENTE",
+          statusColor: "#92400e",
+          statusBg: "#fef3c7",
+          studentName: student.full_name,
+          matricule: student.matricule,
+          amount,
+        });
+        const emailResult = await sendEmail(
+          emails,
+          "Nouvelle demande de paiement en attente",
+          messageText,
+          html
+        );
+        if (emailResult.success) {
+          console.log("[Email] Notification demande initiée envoyée avec succès à :", JSON.stringify(emails));
+        } else {
+          console.error("[Email] Échec notification demande initiée :", emailResult.error);
+        }
+      } else {
+        console.log("[Email] Aucune adresse admin valide trouvée, notification non envoyée.");
+      }
+    } else {
+      console.log("[Email] EMAIL_NOTIFICATIONS_ENABLED n'est pas activé, notification ignorée.");
+    }
+  });
+
   revalidatePath(`/dashboard/students/${student_id}`);
   revalidatePath("/dashboard/requests");
   return { success: true };
@@ -136,6 +215,87 @@ export async function updatePaymentRequestStatus(
         // le relais en arrière-plan, sans solliciter l'utilisateur.
         await new Promise((r) => setTimeout(r, 4000));
         await attemptReceiptGeneration(bgSupabase, requestId);
+      }
+
+      // Notifie uniquement le gestionnaire qui a initié cette demande
+      // précise, que sa demande a été validée. On utilise ici aussi la
+      // clé de service, pour les mêmes raisons de fiabilité que pour la
+      // notification d'initiation.
+      const { createClient: createServiceClient2 } = await import("@supabase/supabase-js");
+      const serviceSupabase2 = createServiceClient2(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY!
+      );
+
+      const { data: requestInfo } = await serviceSupabase2
+        .from("payment_requests")
+        .select("amount, requested_by, student:students(full_name, matricule)")
+        .eq("id", requestId)
+        .single();
+
+      if (requestInfo?.requested_by) {
+        const { data: requester } = await serviceSupabase2
+          .from("profiles")
+          .select("phone_number, email")
+          .eq("id", requestInfo.requested_by)
+          .single();
+
+        const studentInfo = requestInfo.student as unknown as {
+          full_name: string;
+          matricule: string;
+        } | null;
+
+        if (requester && studentInfo) {
+          const messageText = `Demande Validée : ${studentInfo.full_name}, ${Math.round(
+            Number(requestInfo.amount)
+          ).toLocaleString("fr-FR")} FCFA`;
+
+          if (process.env.SMS_NOTIFICATIONS_ENABLED?.trim() === "true" && requester.phone_number) {
+            const { sendSms } = await import("@/lib/sms/twilio");
+            const smsResult = await sendSms([requester.phone_number], messageText);
+            if (!smsResult.success) {
+              console.error("[SMS] Échec notification demande validée :", smsResult.error);
+            }
+          }
+
+          if (process.env.EMAIL_NOTIFICATIONS_ENABLED?.trim() === "true") {
+            console.log(
+              "[Email] Adresse du gestionnaire trouvée pour notification validation :",
+              JSON.stringify(requester.email)
+            );
+            if (requester.email) {
+              const { sendEmail } = await import("@/lib/email/sendgrid");
+              const { buildNotificationEmailHtml } = await import("@/lib/email/emailTemplate");
+              const html = buildNotificationEmailHtml({
+                title: "Votre demande de paiement a été validée",
+                statusLabel: "VALIDÉE",
+                statusColor: "#065f46",
+                statusBg: "#d1fae5",
+                studentName: studentInfo.full_name,
+                matricule: studentInfo.matricule,
+                amount: Number(requestInfo.amount),
+              });
+              const emailResult = await sendEmail(
+                [requester.email],
+                "Votre demande de paiement a été validée",
+                messageText,
+                html
+              );
+              if (emailResult.success) {
+                console.log(
+                  "[Email] Notification demande validée envoyée avec succès à :",
+                  requester.email
+                );
+              } else {
+                console.error("[Email] Échec notification demande validée :", emailResult.error);
+              }
+            } else {
+              console.log("[Email] Aucune adresse email trouvée pour ce gestionnaire.");
+            }
+          } else {
+            console.log("[Email] EMAIL_NOTIFICATIONS_ENABLED n'est pas activé, notification ignorée.");
+          }
+        }
       }
     });
   }

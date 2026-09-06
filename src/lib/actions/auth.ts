@@ -40,12 +40,19 @@ export async function signup(formData: FormData) {
   const email = String(formData.get("email") || "").trim();
   const password = String(formData.get("password") || "");
   const fullName = String(formData.get("full_name") || "").trim();
+  const phoneNumber = String(formData.get("phone_number") || "").replace(/\s+/g, "");
 
-  if (!email || !password || !fullName) {
+  if (!email || !password || !fullName || !phoneNumber) {
     return { error: "Tous les champs sont obligatoires." };
   }
   if (password.length < 8) {
     return { error: "Le mot de passe doit contenir au moins 8 caractères." };
+  }
+  if (!/^\+[1-9]\d{6,14}$/.test(phoneNumber)) {
+    return {
+      error:
+        "Le numéro de téléphone doit être au format international, ex : +237650000000.",
+    };
   }
 
   const supabase = await createClient();
@@ -57,6 +64,13 @@ export async function signup(formData: FormData) {
 
   if (error) {
     return { error: error.message };
+  }
+
+  if (data.user) {
+    await supabase
+      .from("profiles")
+      .update({ phone_number: phoneNumber })
+      .eq("id", data.user.id);
   }
 
   if (!data.session) {
