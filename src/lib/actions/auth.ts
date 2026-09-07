@@ -160,6 +160,18 @@ export async function login(formData: FormData) {
     };
   }
 
+  // Journalise la connexion réussie
+  const { getRequestContext } = await import("@/lib/requestContext");
+  const context = await getRequestContext();
+  const { logActivity } = await import("@/lib/activityLog");
+  await logActivity({
+    userId: data.user.id,
+    userEmail: email,
+    eventType: "connexion",
+    detail: "Connexion réussie",
+    requestContext: context,
+  });
+
   redirect("/dashboard");
 }
 
@@ -172,8 +184,19 @@ export async function signup(formData: FormData) {
   if (!email || !password || !fullName || !phoneNumber) {
     return { error: "Tous les champs sont obligatoires." };
   }
-  if (password.length < 8) {
-    return { error: "Le mot de passe doit contenir au moins 8 caractères." };
+  if (password.length < 12) {
+    return { error: "Le mot de passe doit contenir au moins 12 caractères." };
+  }
+  if (!/[A-Z]/.test(password)) {
+    return { error: "Le mot de passe doit contenir au moins une majuscule." };
+  }
+  if (!/[0-9]/.test(password)) {
+    return { error: "Le mot de passe doit contenir au moins un chiffre." };
+  }
+  if (!/[^A-Za-z0-9]/.test(password)) {
+    return {
+      error: "Le mot de passe doit contenir au moins un caractère spécial (ex : @, ., #, !).",
+    };
   }
   if (!/^\+[1-9]\d{6,14}$/.test(phoneNumber)) {
     return {
@@ -212,6 +235,21 @@ export async function signup(formData: FormData) {
 
 export async function logout() {
   const supabase = await createClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (user) {
+    const { logActivity } = await import("@/lib/activityLog");
+    await logActivity({
+      userId: user.id,
+      userEmail: user.email ?? null,
+      eventType: "deconnexion",
+      detail: "Déconnexion",
+    });
+  }
+
   await supabase.auth.signOut();
   redirect("/login");
 }

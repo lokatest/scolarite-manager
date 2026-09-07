@@ -124,6 +124,18 @@ function SidebarContent({ profile, onNavigate }: { profile: Profile; onNavigate?
               {icons.receipt}
               Template du reçu
             </Link>
+            <Link
+              href="/dashboard/admin/logs"
+              onClick={onNavigate}
+              className={`flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-sm font-medium transition ${
+                pathname.startsWith("/dashboard/admin/logs")
+                  ? "bg-white/10 text-white"
+                  : "text-white/60 hover:bg-white/5 hover:text-white"
+              }`}
+            >
+              {icons.clock}
+              Logs
+            </Link>
           </>
         )}
 

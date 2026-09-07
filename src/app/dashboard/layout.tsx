@@ -13,7 +13,7 @@ export default async function DashboardLayout({
   return (
     <div className="flex flex-col lg:flex-row min-h-screen bg-[var(--tts-bg)]">
       <RealtimeRefresher />
-      <InactivityLogout />
+      <InactivityLogout role={profile.role} />
       <Sidebar profile={profile} />
       <main className="flex-1 min-w-0">{children}</main>
     </div>

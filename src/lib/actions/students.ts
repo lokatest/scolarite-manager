@@ -33,6 +33,16 @@ export async function createStudent(formData: FormData) {
     return { error: "Erreur lors de la création : " + error.message };
   }
 
+  if (user) {
+    const { logActivity } = await import("@/lib/activityLog");
+    await logActivity({
+      userId: user.id,
+      userEmail: user.email ?? null,
+      eventType: "action",
+      detail: `Création de l'étudiant ${full_name} (${matricule})`,
+    });
+  }
+
   revalidatePath("/dashboard/students");
   return { success: true };
 }
@@ -135,6 +145,12 @@ export async function deleteStudent(studentId: string) {
   // Récupère tout ce qui doit être nettoyé dans le stockage AVANT la
   // suppression en base (les demandes de paiement seront supprimées en
   // cascade automatiquement par la base de données).
+  const { data: studentRow } = await supabase
+    .from("students")
+    .select("full_name, matricule")
+    .eq("id", studentId)
+    .single();
+
   const { data: requests } = await supabase
     .from("payment_requests")
     .select("id, receipt_path")
@@ -162,6 +178,14 @@ export async function deleteStudent(studentId: string) {
   if (receiptPaths.length > 0) {
     await supabase.storage.from("receipts").remove(receiptPaths);
   }
+
+  const { logActivity } = await import("@/lib/activityLog");
+  await logActivity({
+    userId: user.id,
+    userEmail: user.email ?? null,
+    eventType: "action",
+    detail: `Suppression de l'étudiant ${studentRow?.full_name ?? ""} (${studentRow?.matricule ?? studentId})`,
+  });
 
   revalidatePath("/dashboard/students");
   revalidatePath("/dashboard/requests");

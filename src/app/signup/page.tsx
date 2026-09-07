@@ -84,10 +84,13 @@ export default async function SignupPage({
                 name="password"
                 type="password"
                 required
-                minLength={8}
-                placeholder="8 caractères minimum"
+                minLength={12}
+                placeholder="12 caractères minimum"
                 className="w-full rounded-lg border border-[var(--tts-border)] px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--tts-blue)] focus:border-transparent transition"
               />
+              <p className="text-xs text-[var(--tts-text-muted)] mt-1">
+                Au moins 12 caractères, avec une majuscule, un chiffre et un caractère spécial (ex : @, ., #).
+              </p>
             </div>
             <div>
               <label className="block text-sm font-medium text-[var(--tts-dark)] mb-1.5">

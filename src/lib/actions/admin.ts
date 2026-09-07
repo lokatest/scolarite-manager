@@ -8,7 +8,7 @@ async function assertAdmin() {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return { ok: false as const, supabase };
+  if (!user) return { ok: false as const, supabase, user: null };
 
   const { data: profile } = await supabase
     .from("profiles")
@@ -16,12 +16,18 @@ async function assertAdmin() {
     .eq("id", user.id)
     .single();
 
-  return { ok: profile?.role === "admin", supabase };
+  return { ok: profile?.role === "admin", supabase, user };
 }
 
 export async function toggleUserActive(userId: string, isActive: boolean) {
-  const { ok, supabase } = await assertAdmin();
+  const { ok, supabase, user } = await assertAdmin();
   if (!ok) return { error: "Action réservée aux administrateurs." };
+
+  const { data: targetRow } = await supabase
+    .from("profiles")
+    .select("full_name")
+    .eq("id", userId)
+    .single();
 
   const { error } = await supabase
     .from("profiles")
@@ -29,13 +35,28 @@ export async function toggleUserActive(userId: string, isActive: boolean) {
     .eq("id", userId);
 
   if (error) return { error: error.message };
+
+  const { logActivity } = await import("@/lib/activityLog");
+  await logActivity({
+    userId: user!.id,
+    userEmail: user!.email ?? null,
+    eventType: "action",
+    detail: `${isActive ? "Activation" : "Désactivation"} du compte de ${targetRow?.full_name ?? userId}`,
+  });
+
   revalidatePath("/dashboard/admin/users");
   return { success: true };
 }
 
 export async function setUserRole(userId: string, role: "admin" | "user") {
-  const { ok, supabase } = await assertAdmin();
+  const { ok, supabase, user } = await assertAdmin();
   if (!ok) return { error: "Action réservée aux administrateurs." };
+
+  const { data: targetRow } = await supabase
+    .from("profiles")
+    .select("full_name")
+    .eq("id", userId)
+    .single();
 
   const { error } = await supabase
     .from("profiles")
@@ -43,12 +64,21 @@ export async function setUserRole(userId: string, role: "admin" | "user") {
     .eq("id", userId);
 
   if (error) return { error: error.message };
+
+  const { logActivity } = await import("@/lib/activityLog");
+  await logActivity({
+    userId: user!.id,
+    userEmail: user!.email ?? null,
+    eventType: "action",
+    detail: `Changement de rôle de ${targetRow?.full_name ?? userId} → ${role === "admin" ? "Administrateur" : "Gestionnaire"}`,
+  });
+
   revalidatePath("/dashboard/admin/users");
   return { success: true };
 }
 
 export async function updateUserPhone(userId: string, phoneNumber: string) {
-  const { ok, supabase } = await assertAdmin();
+  const { ok, supabase, user } = await assertAdmin();
   if (!ok) return { error: "Action réservée aux administrateurs." };
 
   const trimmed = phoneNumber.replace(/\s+/g, "");
@@ -65,6 +95,15 @@ export async function updateUserPhone(userId: string, phoneNumber: string) {
     .eq("id", userId);
 
   if (error) return { error: error.message };
+
+  const { logActivity } = await import("@/lib/activityLog");
+  await logActivity({
+    userId: user!.id,
+    userEmail: user!.email ?? null,
+    eventType: "action",
+    detail: `Modification du numéro de téléphone d'un utilisateur`,
+  });
+
   revalidatePath("/dashboard/admin/users");
   return { success: true };
 }
@@ -75,7 +114,7 @@ export async function updateUserPhone(userId: string, phoneNumber: string) {
  * aux administrateurs.
  */
 export async function unlockLoginAttempts(email: string) {
-  const { ok } = await assertAdmin();
+  const { ok, user } = await assertAdmin();
   if (!ok) return { error: "Action réservée aux administrateurs." };
 
   const { createClient: createServiceClient } = await import("@supabase/supabase-js");
@@ -90,5 +129,14 @@ export async function unlockLoginAttempts(email: string) {
     .eq("email", email.trim().toLowerCase());
 
   if (error) return { error: error.message };
+
+  const { logActivity } = await import("@/lib/activityLog");
+  await logActivity({
+    userId: user!.id,
+    userEmail: user!.email ?? null,
+    eventType: "action",
+    detail: `Déblocage manuel de la connexion pour ${email}`,
+  });
+
   return { success: true };
 }

@@ -1,6 +1,21 @@
 export type Role = "admin" | "user";
 export type PaymentStatus = "en_attente" | "validee" | "rejetee" | "terminee";
 
+export interface ActivityLog {
+  id: string;
+  user_id: string | null;
+  user_email: string | null;
+  event_type: "connexion" | "deconnexion" | "action";
+  detail: string;
+  ip: string | null;
+  city: string | null;
+  country: string | null;
+  device: string | null;
+  os: string | null;
+  browser: string | null;
+  created_at: string;
+}
+
 export interface Profile {
   id: string;
   email: string;

@@ -196,6 +196,21 @@ export async function updatePaymentRequestStatus(
 
   if (error) return { error: "Erreur : " + error.message };
 
+  {
+    const { data: studentRow } = await supabase
+      .from("students")
+      .select("full_name")
+      .eq("id", studentId)
+      .single();
+    const { logActivity } = await import("@/lib/activityLog");
+    await logActivity({
+      userId: user.id,
+      userEmail: user.email ?? null,
+      eventType: "action",
+      detail: `Demande de paiement ${newStatus === "validee" ? "validée" : "rejetée"} — ${studentRow?.full_name ?? "étudiant inconnu"}`,
+    });
+  }
+
   // La génération du reçu (appel à iLoveAPI) est différée APRÈS l'envoi
   // de cette réponse, via `after()` : l'admin n'attend pas ce traitement,
   // ce qui rend la validation instantanée. Un système de nouvelle tentative
@@ -353,6 +368,16 @@ export async function markPaymentRequestAsTerminee(requestId: string, studentId:
     .eq("id", requestId);
 
   if (error) return { error: "Erreur : " + error.message };
+
+  {
+    const { logActivity } = await import("@/lib/activityLog");
+    await logActivity({
+      userId: user.id,
+      userEmail: user.email ?? null,
+      eventType: "action",
+      detail: "Demande de paiement marquée comme terminée",
+    });
+  }
 
   revalidatePath(`/dashboard/students/${studentId}`);
   revalidatePath("/dashboard/requests");
