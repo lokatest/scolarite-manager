@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { toggleUserActive, setUserRole, updateUserPhone } from "@/lib/actions/admin";
+import { toggleUserActive, setUserRole, updateUserPhone, unlockLoginAttempts } from "@/lib/actions/admin";
 import Spinner from "./Spinner";
 import type { Profile } from "@/lib/types";
 
@@ -12,6 +12,19 @@ export default function UserRow({ user, isSelf }: { user: Profile; isSelf: boole
   const [editingPhone, setEditingPhone] = useState(false);
   const [phoneValue, setPhoneValue] = useState(user.phone_number ?? "");
   const [phoneError, setPhoneError] = useState<string | null>(null);
+  const [unlockMessage, setUnlockMessage] = useState<string | null>(null);
+
+  function handleUnlock() {
+    setUnlockMessage(null);
+    startTransition(async () => {
+      const res = await unlockLoginAttempts(user.email);
+      if (res?.error) {
+        setUnlockMessage("Erreur : " + res.error);
+        return;
+      }
+      setUnlockMessage("Blocage levé (si un blocage était actif).");
+    });
+  }
 
   function savePhone() {
     setPhoneError(null);
@@ -99,18 +112,31 @@ export default function UserRow({ user, isSelf }: { user: Profile; isSelf: boole
         </span>
       </td>
       <td className="px-6 py-3.5 text-right">
-        <button
-          disabled={isSelf || isPending}
-          onClick={() =>
-            startTransition(async () => {
-              await toggleUserActive(user.id, !user.is_active);
-              router.refresh();
-            })
-          }
-          className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-[var(--tts-border)] hover:bg-[var(--tts-bg)] transition disabled:opacity-40 disabled:cursor-not-allowed"
-        >
-          {user.is_active ? "Désactiver" : "Activer"}
-        </button>
+        <div className="flex justify-end gap-2 flex-wrap">
+          <button
+            disabled={isPending}
+            onClick={handleUnlock}
+            title="Lève un éventuel blocage de connexion (après 5 échecs)"
+            className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-[var(--tts-border)] hover:bg-[var(--tts-bg)] transition disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            Débloquer connexion
+          </button>
+          <button
+            disabled={isSelf || isPending}
+            onClick={() =>
+              startTransition(async () => {
+                await toggleUserActive(user.id, !user.is_active);
+                router.refresh();
+              })
+            }
+            className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-[var(--tts-border)] hover:bg-[var(--tts-bg)] transition disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            {user.is_active ? "Désactiver" : "Activer"}
+          </button>
+        </div>
+        {unlockMessage && (
+          <p className="text-xs text-[var(--tts-text-muted)] mt-1.5">{unlockMessage}</p>
+        )}
       </td>
     </tr>
   );

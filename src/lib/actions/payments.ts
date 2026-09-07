@@ -229,7 +229,7 @@ export async function updatePaymentRequestStatus(
 
       const { data: requestInfo } = await serviceSupabase2
         .from("payment_requests")
-        .select("amount, requested_by, student:students(full_name, matricule)")
+        .select("amount, requested_by, student_id, student:students(full_name, matricule)")
         .eq("id", requestId)
         .single();
 
@@ -266,6 +266,7 @@ export async function updatePaymentRequestStatus(
             if (requester.email) {
               const { sendEmail } = await import("@/lib/email/sendgrid");
               const { buildNotificationEmailHtml } = await import("@/lib/email/emailTemplate");
+              const siteUrl = process.env.NEXT_PUBLIC_APP_URL?.trim();
               const html = buildNotificationEmailHtml({
                 title: "Votre demande de paiement a été validée",
                 statusLabel: "VALIDÉE",
@@ -274,6 +275,11 @@ export async function updatePaymentRequestStatus(
                 studentName: studentInfo.full_name,
                 matricule: studentInfo.matricule,
                 amount: Number(requestInfo.amount),
+                actionUrl: siteUrl
+                  ? `${siteUrl}/dashboard/students/${requestInfo.student_id}`
+                  : undefined,
+                actionLabel:
+                  "Le reçu est disponible. Cliquez sur ce lien pour terminer la demande et télécharger le reçu.",
               });
               const emailResult = await sendEmail(
                 [requester.email],

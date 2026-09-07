@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentProfile } from "@/lib/get-current-profile";
 import PageHeader from "@/components/PageHeader";
 import StatusPill from "@/components/StatusPill";
+import DashboardStats from "@/components/DashboardStats";
 import Link from "next/link";
 import type { PaymentRequest, Student } from "@/lib/types";
 
@@ -15,6 +16,8 @@ export default async function DashboardOverview() {
     { count: totalRequestsCount },
     { count: termineeCount },
     { data: recentRequests },
+    { data: pendingRequests },
+    { data: termineeRequests },
   ] = await Promise.all([
     supabase.from("students").select("*", { count: "exact", head: true }),
     supabase
@@ -31,16 +34,23 @@ export default async function DashboardOverview() {
       .select("*, student:students(*)")
       .order("requested_at", { ascending: false })
       .limit(6),
+    supabase
+      .from("payment_requests")
+      .select("*, student:students(*)")
+      .eq("status", "en_attente")
+      .order("requested_at", { ascending: false })
+      .limit(50),
+    supabase
+      .from("payment_requests")
+      .select("*, student:students(*)")
+      .eq("status", "terminee")
+      .order("terminee_at", { ascending: false })
+      .limit(50),
   ]);
 
   const requests = (recentRequests || []) as (PaymentRequest & { student: Student })[];
-
-  const stats = [
-    { label: "Étudiants enregistrés", value: studentsCount ?? 0, color: "var(--tts-dark)" },
-    { label: "Demandes en attente", value: pendingCount ?? 0, color: "var(--tts-orange)" },
-    { label: "Nombre total de demandes", value: totalRequestsCount ?? 0, color: "var(--tts-blue)" },
-    { label: "Demandes terminées", value: termineeCount ?? 0, color: "#059669" },
-  ];
+  const pendingList = (pendingRequests || []) as (PaymentRequest & { student: Student })[];
+  const termineeList = (termineeRequests || []) as (PaymentRequest & { student: Student })[];
 
   return (
     <div>
@@ -49,19 +59,14 @@ export default async function DashboardOverview() {
         subtitle="Voici un aperçu de l'activité de la plateforme"
       />
       <div className="p-4 sm:p-8 space-y-8">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {stats.map((s) => (
-            <div
-              key={s.label}
-              className="bg-white rounded-2xl border border-[var(--tts-border)] p-6 shadow-sm"
-            >
-              <p className="text-sm text-[var(--tts-text-muted)]">{s.label}</p>
-              <p className="text-3xl font-bold font-display mt-2" style={{ color: s.color }}>
-                {s.value}
-              </p>
-            </div>
-          ))}
-        </div>
+        <DashboardStats
+          studentsCount={studentsCount ?? 0}
+          pendingCount={pendingCount ?? 0}
+          totalRequestsCount={totalRequestsCount ?? 0}
+          termineeCount={termineeCount ?? 0}
+          pendingList={pendingList}
+          termineeList={termineeList}
+        />
 
         <div className="bg-white rounded-2xl border border-[var(--tts-border)] shadow-sm overflow-hidden">
           <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--tts-border)]">

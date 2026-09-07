@@ -68,3 +68,27 @@ export async function updateUserPhone(userId: string, phoneNumber: string) {
   revalidatePath("/dashboard/admin/users");
   return { success: true };
 }
+
+/**
+ * Lève un blocage de connexion (suite à 5 tentatives échouées) pour
+ * l'email donné, en supprimant sa ligne dans login_attempts. Réservé
+ * aux administrateurs.
+ */
+export async function unlockLoginAttempts(email: string) {
+  const { ok } = await assertAdmin();
+  if (!ok) return { error: "Action réservée aux administrateurs." };
+
+  const { createClient: createServiceClient } = await import("@supabase/supabase-js");
+  const serviceClient = createServiceClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+
+  const { error } = await serviceClient
+    .from("login_attempts")
+    .delete()
+    .eq("email", email.trim().toLowerCase());
+
+  if (error) return { error: error.message };
+  return { success: true };
+}
