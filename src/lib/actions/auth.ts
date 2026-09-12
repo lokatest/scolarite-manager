@@ -206,24 +206,10 @@ export async function signup(formData: FormData) {
   }
 
   const supabase = await createClient();
-
-  // Détecte automatiquement l'adresse depuis laquelle l'inscription a
-  // lieu (localhost en test, scolarite-manager.com en production), pour
-  // que le lien de confirmation ramène toujours au bon endroit — sans
-  // dépendre uniquement du réglage "Site URL" côté Supabase.
-  const { headers } = await import("next/headers");
-  const h = await headers();
-  const host = h.get("host") || "localhost:3000";
-  const protocol = host.startsWith("localhost") ? "http" : "https";
-  const origin = `${protocol}://${host}`;
-
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
-    options: {
-      data: { full_name: fullName },
-      emailRedirectTo: `${origin}/login`,
-    },
+    options: { data: { full_name: fullName } },
   });
 
   if (error) {

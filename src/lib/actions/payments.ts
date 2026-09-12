@@ -321,6 +321,80 @@ export async function updatePaymentRequestStatus(
     });
   }
 
+  // Notifie le gestionnaire si sa demande a été rejetée
+  if (newStatus === "rejetee") {
+    const { after } = await import("next/server");
+    after(async () => {
+      const { createClient: createServiceClient } = await import("@supabase/supabase-js");
+      const serviceSupabase = createServiceClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY!
+      );
+
+      const { data: requestInfo } = await serviceSupabase
+        .from("payment_requests")
+        .select("amount, requested_by, student_id, student:students(full_name, matricule)")
+        .eq("id", requestId)
+        .single();
+
+      if (requestInfo?.requested_by) {
+        const { data: requester } = await serviceSupabase
+          .from("profiles")
+          .select("phone_number, email")
+          .eq("id", requestInfo.requested_by)
+          .single();
+
+        const studentInfo = requestInfo.student as unknown as {
+          full_name: string;
+          matricule: string;
+        } | null;
+
+        if (requester && studentInfo) {
+          const messageText = `Demande Rejetée : ${studentInfo.full_name}, ${Math.round(
+            Number(requestInfo.amount)
+          ).toLocaleString("fr-FR")} FCFA`;
+
+          if (process.env.SMS_NOTIFICATIONS_ENABLED?.trim() === "true" && requester.phone_number) {
+            const { sendSms } = await import("@/lib/sms/twilio");
+            const smsResult = await sendSms([requester.phone_number], messageText);
+            if (!smsResult.success) {
+              console.error("[SMS] Échec notification demande rejetée :", smsResult.error);
+            }
+          }
+
+          if (process.env.EMAIL_NOTIFICATIONS_ENABLED?.trim() === "true" && requester.email) {
+            const { sendEmail } = await import("@/lib/email/sendgrid");
+            const { buildNotificationEmailHtml } = await import("@/lib/email/emailTemplate");
+            const siteUrl = process.env.NEXT_PUBLIC_APP_URL?.trim();
+            const html = buildNotificationEmailHtml({
+              title: "Votre demande de paiement a été rejetée",
+              statusLabel: "REJETÉE",
+              statusColor: "#991b1b",
+              statusBg: "#fee2e2",
+              studentName: studentInfo.full_name,
+              matricule: studentInfo.matricule,
+              amount: Number(requestInfo.amount),
+              actionUrl: siteUrl
+                ? `${siteUrl}/dashboard/students/${requestInfo.student_id}`
+                : undefined,
+              actionLabel:
+                "Votre demande a été rejetée par l'administrateur. Contactez-le pour plus d'informations ou soumettez une nouvelle demande.",
+            });
+            const emailResult = await sendEmail(
+              [requester.email],
+              "Votre demande de paiement a été rejetée",
+              messageText,
+              html
+            );
+            if (!emailResult.success) {
+              console.error("[Email] Échec notification demande rejetée :", emailResult.error);
+            }
+          }
+        }
+      }
+    });
+  }
+
   revalidatePath(`/dashboard/students/${studentId}`);
   revalidatePath("/dashboard/requests");
   return { success: true };

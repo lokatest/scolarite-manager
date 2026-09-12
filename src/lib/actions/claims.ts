@@ -60,6 +60,60 @@ export async function createClaim(formData: FormData) {
     }
   }
 
+  // Notifie tous les administrateurs par email qu'une nouvelle réclamation
+  // attend leur traitement — différé via after() pour ne pas bloquer
+  // la réponse rendue au gestionnaire.
+  if (process.env.EMAIL_NOTIFICATIONS_ENABLED?.trim() === "true") {
+    const { after } = await import("next/server");
+    after(async () => {
+      const { createClient: createServiceClient } = await import("@supabase/supabase-js");
+      const serviceSupabase = createServiceClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY!
+      );
+
+      const { data: admins } = await serviceSupabase
+        .from("profiles")
+        .select("email")
+        .eq("role", "admin")
+        .eq("is_active", true);
+
+      const { data: gestionnaire } = await serviceSupabase
+        .from("profiles")
+        .select("full_name")
+        .eq("id", user.id)
+        .single();
+
+      const adminEmails = (admins || [])
+        .map((a) => a.email)
+        .filter((e): e is string => Boolean(e));
+
+      if (adminEmails.length > 0) {
+        const { sendEmail } = await import("@/lib/email/sendgrid");
+        const { buildClaimNotificationEmailHtml } = await import("@/lib/email/emailTemplate");
+        const siteUrl = process.env.NEXT_PUBLIC_APP_URL?.trim();
+
+        const html = buildClaimNotificationEmailHtml({
+          claimTitle: title,
+          claimDescription: description || null,
+          gestionnaireName: gestionnaire?.full_name ?? user.email ?? "Inconnu",
+          actionUrl: siteUrl ? `${siteUrl}/dashboard/claims` : undefined,
+        });
+
+        const result = await sendEmail(
+          adminEmails,
+          "Nouvelle réclamation en attente",
+          `Réclamation : ${title} — soumise par ${gestionnaire?.full_name ?? user.email}`,
+          html
+        );
+
+        if (!result.success) {
+          console.error("[Email] Échec notification nouvelle réclamation :", result.error);
+        }
+      }
+    });
+  }
+
   revalidatePath("/dashboard/claims");
   return { success: true };
 }
@@ -123,6 +177,57 @@ export async function updateClaimStatus(claimId: string, newStatus: "validee" | 
     .eq("id", claimId);
 
   if (error) return { error: "Erreur : " + error.message };
+
+  // Notifie le gestionnaire qui a soumis la réclamation
+  if (process.env.EMAIL_NOTIFICATIONS_ENABLED?.trim() === "true") {
+    const { after } = await import("next/server");
+    after(async () => {
+      const { createClient: createServiceClient } = await import("@supabase/supabase-js");
+      const serviceSupabase = createServiceClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY!
+      );
+
+      const { data: claim } = await serviceSupabase
+        .from("claims")
+        .select("title, description, created_by")
+        .eq("id", claimId)
+        .single();
+
+      if (claim?.created_by) {
+        const { data: gestionnaire } = await serviceSupabase
+          .from("profiles")
+          .select("email, full_name")
+          .eq("id", claim.created_by)
+          .single();
+
+        if (gestionnaire?.email) {
+          const { sendEmail } = await import("@/lib/email/sendgrid");
+          const { buildClaimStatusEmailHtml } = await import("@/lib/email/emailTemplate");
+          const isValidee = newStatus === "validee";
+
+          const html = buildClaimStatusEmailHtml({
+            claimTitle: claim.title,
+            gestionnaireName: gestionnaire.full_name ?? gestionnaire.email,
+            isValidee,
+          });
+
+          const emailResult = await sendEmail(
+            [gestionnaire.email],
+            isValidee ? "Votre réclamation a été validée" : "Votre réclamation a été rejetée",
+            isValidee
+              ? `Réclamation validée : ${claim.title}`
+              : `Réclamation rejetée : ${claim.title}`,
+            html
+          );
+
+          if (!emailResult.success) {
+            console.error("[Email] Échec notification statut réclamation :", emailResult.error);
+          }
+        }
+      }
+    });
+  }
 
   revalidatePath("/dashboard/claims");
   return { success: true };

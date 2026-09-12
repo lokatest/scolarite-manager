@@ -125,6 +125,186 @@ export function buildNotificationEmailHtml(data: NotificationEmailData): string 
 </html>`;
 }
 
+interface ClaimNotificationEmailData {
+  claimTitle: string;
+  claimDescription: string | null;
+  gestionnaireName: string;
+  actionUrl?: string;
+}
+
+/**
+ * Génère un email HTML pour notifier les administrateurs qu'une nouvelle
+ * réclamation a été soumise par un gestionnaire.
+ */
+export function buildClaimNotificationEmailHtml(data: ClaimNotificationEmailData): string {
+  const { claimTitle, claimDescription, gestionnaireName, actionUrl } = data;
+
+  return `
+<!DOCTYPE html>
+<html lang="fr">
+<head><meta charset="utf-8"></head>
+<body style="margin:0; padding:0; background-color:#f6f8fa; font-family: Arial, Helvetica, sans-serif;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f6f8fa; padding:24px 0;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="480" cellpadding="0" cellspacing="0" style="background-color:#ffffff; border-radius:12px; overflow:hidden; border:1px solid #e2e8ef;">
+
+          <!-- En-tête -->
+          <tr>
+            <td style="background-color:#0e2841; padding:20px 28px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td width="40" style="background-color:#e97132; border-radius:8px; width:36px; height:36px; text-align:center; vertical-align:middle;">
+                    <span style="color:#ffffff; font-weight:bold; font-size:14px;">SM</span>
+                  </td>
+                  <td style="padding-left:12px; color:#ffffff; font-size:16px; font-weight:bold;">
+                    Scolarité Manager
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Titre -->
+          <tr>
+            <td style="padding:28px 28px 8px 28px;">
+              <p style="margin:0; font-size:18px; font-weight:bold; color:#0e2841;">Nouvelle réclamation soumise</p>
+              <p style="margin:8px 0 0 0; font-size:13px; color:#5b7185;">Un gestionnaire vient de soumettre une réclamation en attente de traitement.</p>
+            </td>
+          </tr>
+
+          <!-- Tableau d'informations -->
+          <tr>
+            <td style="padding:12px 28px 24px 28px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #e2e8ef; border-radius:8px; overflow:hidden;">
+                <tr style="background-color:#f6f8fa;">
+                  <td style="padding:12px 16px; font-size:12px; color:#5b7185; font-weight:bold; width:40%; border-bottom:1px solid #e2e8ef;">STATUT</td>
+                  <td style="padding:12px 16px; border-bottom:1px solid #e2e8ef;">
+                    <span style="display:inline-block; background-color:#fef3c7; color:#92400e; font-size:12px; font-weight:bold; padding:4px 10px; border-radius:12px;">EN ATTENTE</span>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding:12px 16px; font-size:12px; color:#5b7185; font-weight:bold; border-bottom:1px solid #e2e8ef;">GESTIONNAIRE</td>
+                  <td style="padding:12px 16px; font-size:14px; color:#0e2841; font-weight:bold; border-bottom:1px solid #e2e8ef;">${gestionnaireName}</td>
+                </tr>
+                <tr style="background-color:#f6f8fa;">
+                  <td style="padding:12px 16px; font-size:12px; color:#5b7185; font-weight:bold; ${claimDescription ? "border-bottom:1px solid #e2e8ef;" : ""}">OBJET</td>
+                  <td style="padding:12px 16px; font-size:14px; color:#0e2841; font-weight:bold; ${claimDescription ? "border-bottom:1px solid #e2e8ef;" : ""}">${claimTitle}</td>
+                </tr>
+                ${claimDescription ? `
+                <tr>
+                  <td style="padding:12px 16px; font-size:12px; color:#5b7185; font-weight:bold;">DESCRIPTION</td>
+                  <td style="padding:12px 16px; font-size:13px; color:#374151;">${claimDescription}</td>
+                </tr>` : ""}
+              </table>
+            </td>
+          </tr>
+
+          ${actionUrl ? `<!-- Bouton d'action -->
+          <tr>
+            <td style="padding:0 28px 28px 28px;">
+              <table role="presentation" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td style="background-color:#e97132; border-radius:8px;">
+                    <a href="${actionUrl}" style="display:inline-block; padding:12px 24px; font-size:14px; font-weight:bold; color:#ffffff; text-decoration:none;">Voir la réclamation</a>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>` : ""}
+
+          <!-- Pied de page -->
+          <tr>
+            <td style="padding:16px 28px; background-color:#f6f8fa; border-top:1px solid #e2e8ef;">
+              <p style="margin:0; font-size:11px; color:#5b7185;">
+                Notification automatique — Scolarité Manager. Ne pas répondre à cet email.
+              </p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+}
+
+interface ClaimStatusEmailData {
+  claimTitle: string;
+  gestionnaireName: string;
+  isValidee: boolean;
+}
+
+export function buildClaimStatusEmailHtml(data: ClaimStatusEmailData): string {
+  const { claimTitle, gestionnaireName, isValidee } = data;
+  const statusLabel = isValidee ? "VALIDÉE" : "REJETÉE";
+  const statusColor = isValidee ? "#065f46" : "#991b1b";
+  const statusBg = isValidee ? "#d1fae5" : "#fee2e2";
+  const message = isValidee
+    ? "Votre réclamation a été prise en compte et validée par l'administrateur."
+    : "Votre réclamation a été examinée et rejetée par l'administrateur. Contactez-le pour plus d'informations.";
+
+  return `
+<!DOCTYPE html>
+<html lang="fr">
+<head><meta charset="utf-8"></head>
+<body style="margin:0; padding:0; background-color:#f6f8fa; font-family: Arial, Helvetica, sans-serif;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f6f8fa; padding:24px 0;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="480" cellpadding="0" cellspacing="0" style="background-color:#ffffff; border-radius:12px; overflow:hidden; border:1px solid #e2e8ef;">
+          <tr>
+            <td style="background-color:#0e2841; padding:20px 28px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td width="40" style="background-color:#e97132; border-radius:8px; width:36px; height:36px; text-align:center; vertical-align:middle;">
+                    <span style="color:#ffffff; font-weight:bold; font-size:14px;">SM</span>
+                  </td>
+                  <td style="padding-left:12px; color:#ffffff; font-size:16px; font-weight:bold;">Scolarité Manager</td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:28px 28px 8px 28px;">
+              <p style="margin:0; font-size:18px; font-weight:bold; color:#0e2841;">Réclamation ${statusLabel.toLowerCase()}</p>
+              <p style="margin:8px 0 0 0; font-size:13px; color:#5b7185;">${message}</p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:12px 28px 28px 28px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #e2e8ef; border-radius:8px; overflow:hidden;">
+                <tr style="background-color:#f6f8fa;">
+                  <td style="padding:12px 16px; font-size:12px; color:#5b7185; font-weight:bold; width:40%; border-bottom:1px solid #e2e8ef;">STATUT</td>
+                  <td style="padding:12px 16px; border-bottom:1px solid #e2e8ef;">
+                    <span style="display:inline-block; background-color:${statusBg}; color:${statusColor}; font-size:12px; font-weight:bold; padding:4px 10px; border-radius:12px;">${statusLabel}</span>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding:12px 16px; font-size:12px; color:#5b7185; font-weight:bold; border-bottom:1px solid #e2e8ef;">GESTIONNAIRE</td>
+                  <td style="padding:12px 16px; font-size:14px; color:#0e2841; font-weight:bold; border-bottom:1px solid #e2e8ef;">${gestionnaireName}</td>
+                </tr>
+                <tr style="background-color:#f6f8fa;">
+                  <td style="padding:12px 16px; font-size:12px; color:#5b7185; font-weight:bold;">OBJET</td>
+                  <td style="padding:12px 16px; font-size:14px; color:#0e2841; font-weight:bold;">${claimTitle}</td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:16px 28px; background-color:#f6f8fa; border-top:1px solid #e2e8ef;">
+              <p style="margin:0; font-size:11px; color:#5b7185;">Notification automatique — Scolarité Manager. Ne pas répondre à cet email.</p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+}
+
 interface SecurityAlertData {
   blockedEmail: string;
   ip: string;
