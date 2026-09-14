@@ -1,7 +1,9 @@
 node_modules/
 .next/
 out/
-.env*.local
+.env*
+!.env.example
+!.env.local.example
 .vercel
 *.tsbuildinfo
 npm-debug.log*

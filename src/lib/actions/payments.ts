@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
+import { isValidImageFile } from "@/lib/validateImageFile";
 
 export async function createPaymentRequest(formData: FormData) {
   const student_id = String(formData.get("student_id") || "");
@@ -23,7 +24,7 @@ export async function createPaymentRequest(formData: FormData) {
   if (!file || file.size === 0) {
     return { error: "Merci de joindre une capture de la transaction." };
   }
-  if (!file.type.startsWith("image/")) {
+  if (!file.type.startsWith("image/") || !(await isValidImageFile(file))) {
     return { error: "Seules les images sont acceptées (JPG, PNG, WEBP...)." };
   }
   if (file.size > 8 * 1024 * 1024) {
@@ -502,7 +503,7 @@ export async function updatePaymentRequestDetails(
   // Si une nouvelle capture est fournie, on remplace l'ancienne (une seule
   // preuve de paiement autorisée par demande, comme à la création).
   if (file && file.size > 0) {
-    if (!file.type.startsWith("image/")) {
+    if (!file.type.startsWith("image/") || !(await isValidImageFile(file))) {
       return { error: "Seules les images sont acceptées (JPG, PNG, WEBP...)." };
     }
     if (file.size > 8 * 1024 * 1024) {
@@ -662,7 +663,7 @@ export async function uploadPaymentProof(requestId: string, formData: FormData) 
   const file = formData.get("file") as File | null;
   if (!file || file.size === 0) return { error: "Merci de sélectionner un fichier." };
 
-  if (!file.type.startsWith("image/")) {
+  if (!file.type.startsWith("image/") || !(await isValidImageFile(file))) {
     return { error: "Seules les images sont acceptées (JPG, PNG, WEBP...)." };
   }
   if (file.size > 8 * 1024 * 1024) {

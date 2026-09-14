@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
+import { isValidImageFile } from "@/lib/validateImageFile";
 
 export async function createClaim(formData: FormData) {
   const title = String(formData.get("title") || "").trim();
@@ -40,7 +41,7 @@ export async function createClaim(formData: FormData) {
 
   for (const file of files) {
     if (!file || file.size === 0) continue;
-    if (!file.type.startsWith("image/")) continue;
+    if (!file.type.startsWith("image/") || !(await isValidImageFile(file))) continue;
     if (file.size > 8 * 1024 * 1024) continue;
 
     const ext = file.name.split(".").pop() || "jpg";
