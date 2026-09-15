@@ -18,9 +18,11 @@ type FullRequest = PaymentRequest & {
 export default function RequestsExplorer({
   initialRequests,
   role,
+  currentUserId,
 }: {
   initialRequests: FullRequest[];
   role: Role;
+  currentUserId: string;
 }) {
   const [requests, setRequests] = useState(initialRequests);
   const [query, setQuery] = useState("");
@@ -175,6 +177,8 @@ function RequestRow({ r, role }: { r: FullRequest; role: Role }) {
           motif={r.motif}
           recuEcobank={r.recu_ecobank}
           proofPath={r.payment_proofs?.[0]?.storage_path || null}
+          requestedBy={r.requested_by}
+          currentUserId={currentUserId}
         />
       </div>
     </li>
