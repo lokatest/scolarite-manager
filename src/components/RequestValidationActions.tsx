@@ -6,7 +6,6 @@ import {
   updatePaymentRequestStatus,
   markPaymentRequestAsTerminee,
   deletePaymentRequest,
-  getReceiptDownloadUrl,
   regenerateReceipt,
   getSignedProofUrl,
 } from "@/lib/actions/payments";
@@ -37,8 +36,6 @@ export default function RequestValidationActions({
   const [isPending, startTransition] = useTransition();
   const [showEdit, setShowEdit] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [isDownloading, setIsDownloading] = useState(false);
-  const [downloadError, setDownloadError] = useState<string | null>(null);
   const [proofUrl, setProofUrl] = useState<string | null>(null);
   const [isLoadingProof, setIsLoadingProof] = useState(false);
 
@@ -54,31 +51,12 @@ export default function RequestValidationActions({
     if (res.url) setProofUrl(res.url);
   }
 
-  async function handleDownloadReceipt() {
-    setDownloadError(null);
-    setIsDownloading(true);
-
-    // Safari (notamment sur iPhone) bloque les fenêtres ouvertes après un
-    // appel asynchrone, car ce n'est plus considéré comme une action directe
-    // de l'utilisateur. On ouvre donc l'onglet immédiatement (de façon
-    // synchrone, au clic), puis on lui donne l'adresse une fois récupérée.
-    const newTab = window.open("", "_blank");
-
-    const res = await getReceiptDownloadUrl(requestId);
-    setIsDownloading(false);
-
-    if (res.error) {
-      setDownloadError(res.error);
-      newTab?.close();
-      return;
-    }
-    if (res.url && newTab) {
-      newTab.location.href = res.url;
-    } else if (res.url) {
-      // Si le navigateur a quand même bloqué l'ouverture, on retente une
-      // dernière fois directement (couvre les cas restants).
-      window.open(res.url, "_blank");
-    }
+  function handleDownloadReceipt() {
+    // Ouverture directe et synchrone au clic (fonctionne nativement sur
+    // Safari/iPhone) : la route API vérifie l'autorisation via les
+    // cookies de session et renvoie le PDF sans jamais exposer l'URL
+    // interne de Supabase Storage.
+    window.open(`/api/receipts/${requestId}/download`, "_blank");
   }
 
   function act(action: () => Promise<{ error?: string } | undefined>) {
@@ -176,12 +154,10 @@ export default function RequestValidationActions({
 
         {(status === "terminee" || (status === "validee" && role === "admin")) && (
           <button
-            disabled={isDownloading}
             onClick={handleDownloadReceipt}
-            className="px-3 py-1.5 rounded-lg text-xs font-semibold text-white transition disabled:opacity-50 hover:opacity-90 inline-flex items-center gap-1.5"
+            className="px-3 py-1.5 rounded-lg text-xs font-semibold text-white transition hover:opacity-90 inline-flex items-center gap-1.5"
             style={{ background: "var(--tts-blue)" }}
           >
-            {isDownloading && <Spinner size={12} />}
             Télécharger le reçu
           </button>
         )}
@@ -197,10 +173,6 @@ export default function RequestValidationActions({
           </button>
         )}
       </div>
-
-      {downloadError && (
-        <p className="text-xs text-red-600 mt-2 text-right">{downloadError}</p>
-      )}
 
       {proofUrl && (
         // eslint-disable-next-line @next/next/no-img-element
