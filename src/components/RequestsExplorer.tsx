@@ -89,7 +89,7 @@ export default function RequestsExplorer({
             </h2>
             <ul className="space-y-3">
               {pending.map((r) => (
-                <RequestRow key={r.id} r={r} role={role} />
+                <RequestRow key={r.id} r={r} role={role} currentUserId={currentUserId} />
               ))}
             </ul>
           </div>
@@ -106,7 +106,7 @@ export default function RequestsExplorer({
           ) : (
             <ul className="space-y-3">
               {resolved.map((r) => (
-                <RequestRow key={r.id} r={r} role={role} />
+                <RequestRow key={r.id} r={r} role={role} currentUserId={currentUserId} />
               ))}
             </ul>
           )}
@@ -122,7 +122,15 @@ export default function RequestsExplorer({
   );
 }
 
-function RequestRow({ r, role }: { r: FullRequest; role: Role }) {
+function RequestRow({
+  r,
+  role,
+  currentUserId,
+}: {
+  r: FullRequest;
+  role: Role;
+  currentUserId: string;
+}) {
   return (
     <li className="bg-white rounded-2xl border border-[var(--tts-border)] shadow-sm p-5">
       <div className="flex items-start justify-between gap-4 flex-wrap">
