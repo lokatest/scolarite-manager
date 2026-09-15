@@ -179,6 +179,8 @@ export default async function StudentDetailPage({
                       motif={r.motif}
                       recuEcobank={r.recu_ecobank}
                       proofPath={proofsByRequest[r.id]?.[0]?.storage_path || null}
+                      requestedBy={r.requested_by}
+                      currentUserId={profile.id}
                     />
                   </div>
                 </li>

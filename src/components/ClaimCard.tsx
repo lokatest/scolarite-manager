@@ -10,7 +10,15 @@ import ClaimPhotosViewer from "./ClaimPhotosViewer";
 import type { Claim, Role } from "@/lib/types";
 import { formatDateTimeCM } from "@/lib/formatDateTime";
 
-export default function ClaimCard({ claim, role }: { claim: Claim; role: Role }) {
+export default function ClaimCard({
+  claim,
+  role,
+  currentUserId,
+}: {
+  claim: Claim;
+  role: Role;
+  currentUserId: string;
+}) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [showEdit, setShowEdit] = useState(false);
@@ -25,7 +33,8 @@ export default function ClaimCard({ claim, role }: { claim: Claim; role: Role })
     });
   }
 
-  const canEditOrDelete = role === "user" && claim.status === "en_attente";
+  const canEditOrDelete =
+    role === "user" && claim.status === "en_attente" && claim.created_by === currentUserId;
   const canValidateOrReject = role === "admin" && claim.status === "en_attente";
   const canAdminDelete = role === "admin";
 

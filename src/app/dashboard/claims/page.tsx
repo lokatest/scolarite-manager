@@ -42,7 +42,7 @@ export default async function ClaimsPage() {
               </h2>
               <ul className="space-y-3">
                 {pending.map((c) => (
-                  <ClaimCard key={c.id} claim={c} role={profile.role} />
+                  <ClaimCard key={c.id} claim={c} role={profile.role} currentUserId={profile.id} />
                 ))}
               </ul>
             </div>
@@ -59,7 +59,7 @@ export default async function ClaimsPage() {
             ) : (
               <ul className="space-y-3">
                 {resolved.map((c) => (
-                  <ClaimCard key={c.id} claim={c} role={profile.role} />
+                  <ClaimCard key={c.id} claim={c} role={profile.role} currentUserId={profile.id} />
                 ))}
               </ul>
             )}

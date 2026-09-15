@@ -22,6 +22,8 @@ export default function RequestValidationActions({
   motif,
   recuEcobank,
   proofPath,
+  requestedBy,
+  currentUserId,
 }: {
   requestId: string;
   studentId: string;
@@ -31,6 +33,8 @@ export default function RequestValidationActions({
   motif: string | null;
   recuEcobank: string | null;
   proofPath: string | null;
+  requestedBy: string | null;
+  currentUserId: string;
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -71,10 +75,11 @@ export default function RequestValidationActions({
     });
   }
 
+  const isOwner = requestedBy === currentUserId;
   const canValidateOrReject = role === "admin" && status === "en_attente";
   const canMarkTerminee = role === "user" && status === "validee";
-  const canEdit = status === "en_attente";
-  const canDelete = status === "en_attente" || role === "admin";
+  const canEdit = status === "en_attente" && (isOwner || role === "admin");
+  const canDelete = (status === "en_attente" && isOwner) || role === "admin";
 
   return (
     <div>

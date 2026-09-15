@@ -133,12 +133,15 @@ export async function updateClaim(claimId: string, formData: FormData) {
 
   const { data: existing } = await supabase
     .from("claims")
-    .select("status")
+    .select("status, created_by")
     .eq("id", claimId)
     .single();
 
   if (existing?.status !== "en_attente") {
     return { error: "Seule une réclamation en attente peut être modifiée." };
+  }
+  if (existing.created_by !== user.id) {
+    return { error: "Vous ne pouvez modifier que vos propres réclamations." };
   }
 
   const { error } = await supabase
@@ -249,7 +252,7 @@ export async function deleteClaim(claimId: string) {
 
   const { data: existing } = await supabase
     .from("claims")
-    .select("status")
+    .select("status, created_by")
     .eq("id", claimId)
     .single();
 
@@ -257,6 +260,13 @@ export async function deleteClaim(claimId: string) {
 
   if (existing.status !== "en_attente" && profile?.role !== "admin") {
     return { error: "Seul un administrateur peut supprimer une réclamation déjà traitée." };
+  }
+  if (
+    existing.status === "en_attente" &&
+    profile?.role !== "admin" &&
+    existing.created_by !== user.id
+  ) {
+    return { error: "Vous ne pouvez supprimer que vos propres réclamations." };
   }
 
   const { data: photos } = await supabase

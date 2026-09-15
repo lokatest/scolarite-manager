@@ -490,14 +490,23 @@ export async function updatePaymentRequestDetails(
   } = await supabase.auth.getUser();
   if (!user) return { error: "Session expirée, reconnectez-vous." };
 
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    .single();
+
   const { data: existing } = await supabase
     .from("payment_requests")
-    .select("status")
+    .select("status, requested_by")
     .eq("id", requestId)
     .single();
 
   if (existing?.status !== "en_attente") {
     return { error: "Seule une demande en attente peut être modifiée." };
+  }
+  if (existing.requested_by !== user.id && profile?.role !== "admin") {
+    return { error: "Vous ne pouvez modifier que vos propres demandes." };
   }
 
   // Si une nouvelle capture est fournie, on remplace l'ancienne (une seule
@@ -577,7 +586,7 @@ export async function deletePaymentRequest(requestId: string, studentId: string)
 
   const { data: existing } = await supabase
     .from("payment_requests")
-    .select("status, receipt_path")
+    .select("status, receipt_path, requested_by")
     .eq("id", requestId)
     .single();
 
@@ -587,6 +596,13 @@ export async function deletePaymentRequest(requestId: string, studentId: string)
     return {
       error: "Seul un administrateur peut supprimer une demande déjà traitée.",
     };
+  }
+  if (
+    existing.status === "en_attente" &&
+    profile?.role !== "admin" &&
+    existing.requested_by !== user.id
+  ) {
+    return { error: "Vous ne pouvez supprimer que vos propres demandes." };
   }
 
   // Récupère les preuves de paiement associées AVANT de supprimer la demande,
