@@ -94,7 +94,7 @@ export async function login(formData: FormData) {
             .filter((e): e is string => Boolean(e));
 
           if (adminEmails.length > 0) {
-            const { sendEmail } = await import("@/lib/email/sendgrid");
+            const { sendEmail } = await import("@/lib/email/resend");
             const { buildSecurityAlertEmailHtml } = await import("@/lib/email/emailTemplate");
             const html = buildSecurityAlertEmailHtml({
               blockedEmail: email,

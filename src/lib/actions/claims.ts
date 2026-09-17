@@ -90,7 +90,7 @@ export async function createClaim(formData: FormData) {
         .filter((e): e is string => Boolean(e));
 
       if (adminEmails.length > 0) {
-        const { sendEmail } = await import("@/lib/email/sendgrid");
+        const { sendEmail } = await import("@/lib/email/resend");
         const { buildClaimNotificationEmailHtml } = await import("@/lib/email/emailTemplate");
         const siteUrl = process.env.NEXT_PUBLIC_APP_URL?.trim();
 
@@ -206,7 +206,7 @@ export async function updateClaimStatus(claimId: string, newStatus: "validee" | 
           .single();
 
         if (gestionnaire?.email) {
-          const { sendEmail } = await import("@/lib/email/sendgrid");
+          const { sendEmail } = await import("@/lib/email/resend");
           const { buildClaimStatusEmailHtml } = await import("@/lib/email/emailTemplate");
           const isValidee = newStatus === "validee";
 

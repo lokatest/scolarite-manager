@@ -127,7 +127,7 @@ export async function createPaymentRequest(formData: FormData) {
       const emails = admins.map((a) => a.email).filter((e): e is string => Boolean(e));
       console.log("[Email] Adresses admin trouvées pour notification initiation :", JSON.stringify(emails));
       if (emails.length > 0) {
-        const { sendEmail } = await import("@/lib/email/sendgrid");
+        const { sendEmail } = await import("@/lib/email/resend");
         const { buildNotificationEmailHtml } = await import("@/lib/email/emailTemplate");
         const html = buildNotificationEmailHtml({
           title: "Nouvelle demande de paiement en attente",
@@ -280,7 +280,7 @@ export async function updatePaymentRequestStatus(
               JSON.stringify(requester.email)
             );
             if (requester.email) {
-              const { sendEmail } = await import("@/lib/email/sendgrid");
+              const { sendEmail } = await import("@/lib/email/resend");
               const { buildNotificationEmailHtml } = await import("@/lib/email/emailTemplate");
               const siteUrl = process.env.NEXT_PUBLIC_APP_URL?.trim();
               const html = buildNotificationEmailHtml({
@@ -364,7 +364,7 @@ export async function updatePaymentRequestStatus(
           }
 
           if (process.env.EMAIL_NOTIFICATIONS_ENABLED?.trim() === "true" && requester.email) {
-            const { sendEmail } = await import("@/lib/email/sendgrid");
+            const { sendEmail } = await import("@/lib/email/resend");
             const { buildNotificationEmailHtml } = await import("@/lib/email/emailTemplate");
             const siteUrl = process.env.NEXT_PUBLIC_APP_URL?.trim();
             const html = buildNotificationEmailHtml({
