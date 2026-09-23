@@ -8,6 +8,7 @@ const EVENT_LABELS: Record<ActivityLog["event_type"], { label: string; bg: strin
   connexion: { label: "Connexion", bg: "bg-emerald-50", text: "text-emerald-700" },
   deconnexion: { label: "Déconnexion", bg: "bg-slate-100", text: "text-slate-700" },
   action: { label: "Action", bg: "bg-blue-50", text: "text-[var(--tts-blue)]" },
+  visite: { label: "Visite", bg: "bg-violet-50", text: "text-violet-700" },
 };
 
 export default function LogsExplorer({ initialLogs }: { initialLogs: ActivityLog[] }) {
@@ -29,7 +30,7 @@ export default function LogsExplorer({ initialLogs }: { initialLogs: ActivityLog
     <div>
       <div className="flex flex-wrap items-center gap-3 mb-6">
         <div className="inline-flex rounded-lg border border-[var(--tts-border)] bg-white overflow-hidden">
-          {(["tout", "connexion", "deconnexion", "action"] as const).map((f) => (
+          {(["tout", "visite", "connexion", "deconnexion", "action"] as const).map((f) => (
             <button
               key={f}
               onClick={() => setFilter(f)}
@@ -82,7 +83,11 @@ export default function LogsExplorer({ initialLogs }: { initialLogs: ActivityLog
                     {formatDateTimeCM(log.created_at)}
                   </td>
                   <td className="px-6 py-3.5 text-[var(--tts-dark)] font-medium">
-                    {log.user_email || "—"}
+                    {log.user_email || (
+                      <span className="italic text-[var(--tts-text-muted)] font-normal">
+                        {log.event_type === "visite" ? "Visiteur anonyme" : "—"}
+                      </span>
+                    )}
                   </td>
                   <td className="px-6 py-3.5">
                     <span
@@ -91,7 +96,22 @@ export default function LogsExplorer({ initialLogs }: { initialLogs: ActivityLog
                       {cfg.label}
                     </span>
                   </td>
-                  <td className="px-6 py-3.5 text-[var(--tts-dark)]">{log.detail}</td>
+                  <td className="px-6 py-3.5 text-[var(--tts-dark)]">
+                    {log.event_type === "visite" && log.path ? (
+                      <div>
+                        <span className="font-mono text-xs bg-[var(--tts-bg)] px-2 py-0.5 rounded">
+                          {log.path}
+                        </span>
+                        {log.referrer && (
+                          <div className="text-xs text-[var(--tts-text-muted)] mt-1">
+                            Venu de : {log.referrer}
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      log.detail
+                    )}
+                  </td>
                   <td className="px-6 py-3.5 text-xs text-[var(--tts-text-muted)]">
                     {log.device && (
                       <div>

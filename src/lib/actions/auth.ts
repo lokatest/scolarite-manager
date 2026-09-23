@@ -172,7 +172,33 @@ export async function login(formData: FormData) {
     requestContext: context,
   });
 
+  // Ouvre le compteur de session : c'est cet horodatage signé que le
+  // middleware contrôlera à chaque chargement de page pour appliquer les
+  // limites d'inactivité (20 min) et de durée maximale (90 min).
+  await startSessionGuard();
+
   redirect("/dashboard");
+}
+
+/**
+ * Pose le cookie de contrôle de session au moment de la connexion.
+ * Sans lui, le middleware considère la session comme non valide et
+ * redirige vers la page de connexion.
+ */
+async function startSessionGuard() {
+  const {
+    SESSION_GUARD_COOKIE,
+    GUARD_COOKIE_OPTIONS,
+    buildGuardCookie,
+  } = await import("@/lib/sessionGuard");
+
+  const now = Date.now();
+  const value = await buildGuardCookie(now, now);
+  if (!value) return;
+
+  const { cookies } = await import("next/headers");
+  const cookieStore = await cookies();
+  cookieStore.set(SESSION_GUARD_COOKIE, value, GUARD_COOKIE_OPTIONS);
 }
 
 export async function signup(formData: FormData) {
@@ -230,6 +256,9 @@ export async function signup(formData: FormData) {
     };
   }
 
+  // Une session a été ouverte immédiatement : le compteur doit l'être aussi.
+  await startSessionGuard();
+
   redirect("/dashboard");
 }
 
@@ -251,5 +280,12 @@ export async function logout() {
   }
 
   await supabase.auth.signOut();
+
+  // Ferme le compteur de session en même temps que la session Supabase.
+  const { SESSION_GUARD_COOKIE } = await import("@/lib/sessionGuard");
+  const { cookies } = await import("next/headers");
+  const cookieStore = await cookies();
+  cookieStore.delete(SESSION_GUARD_COOKIE);
+
   redirect("/login");
 }

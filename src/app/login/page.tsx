@@ -5,7 +5,7 @@ import SubmitButton from "@/components/SubmitButton";
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; expired?: string }>;
 }) {
   async function submit(formData: FormData) {
     "use server";
@@ -17,6 +17,14 @@ export default async function LoginPage({
   }
 
   const params = await searchParams;
+
+  // Message expliquant une session terminée par le contrôle de durée
+  // côté serveur (inactivité ou durée maximale atteinte).
+  let expiredMessage: string | null = null;
+  if (params?.expired) {
+    const { guardReasonMessage } = await import("@/lib/sessionGuard");
+    expiredMessage = guardReasonMessage(params.expired);
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-[var(--tts-bg)] px-4">
@@ -37,6 +45,11 @@ export default async function LoginPage({
         </div>
 
         <div className="bg-white rounded-2xl shadow-sm border border-[var(--tts-border)] p-8">
+          {expiredMessage && (
+            <div className="mb-5 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-sm px-4 py-3">
+              {expiredMessage}
+            </div>
+          )}
           {params?.error && (
             <div className="mb-5 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3">
               {params.error}

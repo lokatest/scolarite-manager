@@ -1,14 +1,27 @@
-/**
- * Extrait les informations disponibles sur la requête entrante : adresse
- * IP, localisation (fournie automatiquement par Vercel via des en-têtes
- * dédiés), et type d'appareil déduit du User-Agent. Aucune de ces
- * informations n'est garantie présente (dépend de l'hébergeur et du
- * réseau du visiteur) — chaque valeur retombe sur "Inconnu(e)" si absente.
- */
-export async function getRequestContext() {
-  const { headers } = await import("next/headers");
-  const h = await headers();
+export interface RequestContext {
+  ip: string;
+  city: string;
+  region: string;
+  country: string;
+  device: string;
+  os: string;
+  browser: string;
+  userAgent: string;
+}
 
+/**
+ * Analyse un jeu d'en-têtes HTTP et en extrait les informations
+ * disponibles : adresse IP, localisation (fournie automatiquement par
+ * Vercel via des en-têtes dédiés), et type d'appareil déduit du
+ * User-Agent. Aucune de ces informations n'est garantie présente
+ * (dépend de l'hébergeur et du réseau du visiteur) — chaque valeur
+ * retombe sur "Inconnu(e)" si absente.
+ *
+ * Fonction volontairement pure (elle reçoit les en-têtes en paramètre)
+ * pour pouvoir servir aussi bien dans une Server Action que dans le
+ * middleware, qui n'a pas accès à next/headers.
+ */
+export function parseRequestContext(h: Headers): RequestContext {
   const ip =
     h.get("x-forwarded-for")?.split(",")[0]?.trim() ||
     h.get("x-real-ip") ||
@@ -49,4 +62,14 @@ export async function getRequestContext() {
     browser,
     userAgent: userAgent || "Inconnu",
   };
+}
+
+/**
+ * Version pour les Server Actions et Server Components : récupère les
+ * en-têtes de la requête courante puis les analyse.
+ */
+export async function getRequestContext(): Promise<RequestContext> {
+  const { headers } = await import("next/headers");
+  const h = await headers();
+  return parseRequestContext(h);
 }

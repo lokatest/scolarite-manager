@@ -5,7 +5,7 @@ export interface ActivityLog {
   id: string;
   user_id: string | null;
   user_email: string | null;
-  event_type: "connexion" | "deconnexion" | "action";
+  event_type: "connexion" | "deconnexion" | "action" | "visite";
   detail: string;
   ip: string | null;
   city: string | null;
@@ -13,6 +13,8 @@ export interface ActivityLog {
   device: string | null;
   os: string | null;
   browser: string | null;
+  path: string | null;
+  referrer: string | null;
   created_at: string;
 }
 

@@ -8,7 +8,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 export async function logActivity(params: {
   userId: string | null;
   userEmail: string | null;
-  eventType: "connexion" | "deconnexion" | "action";
+  eventType: "connexion" | "deconnexion" | "action" | "visite";
   detail: string;
   requestContext?: {
     ip: string;

@@ -9,20 +9,38 @@ export default async function LogsPage() {
   if (profile.role !== "admin") redirect("/dashboard");
 
   const supabase = await createClient();
-  const { data } = await supabase
-    .from("activity_logs")
-    .select("*")
-    .order("created_at", { ascending: false })
-    .limit(300);
+
+  // Les visites étant bien plus nombreuses que les autres événements,
+  // on les charge séparément : sans cela, elles rempliraient à elles
+  // seules la liste et masqueraient les connexions et actions, qui sont
+  // les traces de sécurité les plus importantes.
+  const [{ data: activityLogs }, { data: visitLogs }] = await Promise.all([
+    supabase
+      .from("activity_logs")
+      .select("*")
+      .in("event_type", ["connexion", "deconnexion", "action"])
+      .order("created_at", { ascending: false })
+      .limit(250),
+    supabase
+      .from("activity_logs")
+      .select("*")
+      .eq("event_type", "visite")
+      .order("created_at", { ascending: false })
+      .limit(250),
+  ]);
+
+  const logs = [...(activityLogs || []), ...(visitLogs || [])].sort(
+    (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+  );
 
   return (
     <div>
       <PageHeader
         title="Logs"
-        subtitle="Journal des connexions, déconnexions et actions effectuées"
+        subtitle="Journal des visites, connexions, déconnexions et actions effectuées"
       />
       <div className="p-4 sm:p-8">
-        <LogsExplorer initialLogs={data || []} />
+        <LogsExplorer initialLogs={logs} />
       </div>
     </div>
   );
