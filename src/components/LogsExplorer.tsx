@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { formatDateTimeCM } from "@/lib/formatDateTime";
+import { getSuspiciousReason } from "@/lib/suspiciousPaths";
 import type { ActivityLog } from "@/lib/types";
 
 const EVENT_LABELS: Record<ActivityLog["event_type"], { label: string; bg: string; text: string }> = {
@@ -77,8 +78,17 @@ export default function LogsExplorer({ initialLogs }: { initialLogs: ActivityLog
           <tbody className="divide-y divide-[var(--tts-border)]">
             {filtered.map((log) => {
               const cfg = EVENT_LABELS[log.event_type];
+              // Une visite vers un chemin caractéristique d'un balayage
+              // malveillant est signalée en rouge, avec sa raison.
+              const suspiciousReason =
+                log.event_type === "visite" ? getSuspiciousReason(log.path) : null;
               return (
-                <tr key={log.id} className="hover:bg-[var(--tts-bg)]/60 transition">
+                <tr
+                  key={log.id}
+                  className={`transition ${
+                    suspiciousReason ? "bg-red-50/40 hover:bg-red-50/70" : "hover:bg-[var(--tts-bg)]/60"
+                  }`}
+                >
                   <td className="px-6 py-3.5 text-xs text-[var(--tts-text-muted)] whitespace-nowrap">
                     {formatDateTimeCM(log.created_at)}
                   </td>
@@ -90,18 +100,49 @@ export default function LogsExplorer({ initialLogs }: { initialLogs: ActivityLog
                     )}
                   </td>
                   <td className="px-6 py-3.5">
-                    <span
-                      className={`inline-block px-2.5 py-1 rounded-full text-xs font-medium ${cfg.bg} ${cfg.text}`}
-                    >
-                      {cfg.label}
-                    </span>
+                    {suspiciousReason ? (
+                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-700">
+                        <svg
+                          width="11"
+                          height="11"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2.5"
+                          strokeLinecap="round"
+                          aria-hidden="true"
+                        >
+                          <path d="M12 9v4" />
+                          <path d="M12 17h.01" />
+                          <path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z" />
+                        </svg>
+                        Suspect
+                      </span>
+                    ) : (
+                      <span
+                        className={`inline-block px-2.5 py-1 rounded-full text-xs font-medium ${cfg.bg} ${cfg.text}`}
+                      >
+                        {cfg.label}
+                      </span>
+                    )}
                   </td>
                   <td className="px-6 py-3.5 text-[var(--tts-dark)]">
                     {log.event_type === "visite" && log.path ? (
                       <div>
-                        <span className="font-mono text-xs bg-[var(--tts-bg)] px-2 py-0.5 rounded">
+                        <span
+                          className={`font-mono text-xs px-2 py-0.5 rounded ${
+                            suspiciousReason
+                              ? "bg-red-100 text-red-800"
+                              : "bg-[var(--tts-bg)]"
+                          }`}
+                        >
                           {log.path}
                         </span>
+                        {suspiciousReason && (
+                          <div className="text-xs text-red-700 mt-1 font-medium">
+                            {suspiciousReason}
+                          </div>
+                        )}
                         {log.referrer && (
                           <div className="text-xs text-[var(--tts-text-muted)] mt-1">
                             Venu de : {log.referrer}

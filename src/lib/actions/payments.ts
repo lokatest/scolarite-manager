@@ -38,6 +38,22 @@ export async function createPaymentRequest(formData: FormData) {
 
   if (!user) return { error: "Session expirée, reconnectez-vous." };
 
+  // Un numéro de reçu ECOBANK ne peut être rattaché qu'à une seule
+  // demande. On vérifie avant l'insertion pour afficher un message
+  // clair ; la contrainte d'unicité en base (migration v18) reste le
+  // garde-fou définitif, y compris si deux demandes identiques
+  // arrivaient exactement au même instant.
+  const { data: duplicate } = await supabase
+    .from("payment_requests")
+    .select("id")
+    .eq("recu_ecobank", recu_ecobank)
+    .limit(1)
+    .maybeSingle();
+
+  if (duplicate) {
+    return { error: "Ce numéro de reçu ECOBANK existe déjà pour une autre demande." };
+  }
+
   const { data: inserted, error } = await supabase
     .from("payment_requests")
     .insert({
@@ -51,7 +67,14 @@ export async function createPaymentRequest(formData: FormData) {
     .select("id")
     .single();
 
-  if (error || !inserted) return { error: "Erreur : " + (error?.message || "création impossible") };
+  if (error || !inserted) {
+    // 23505 = violation d'unicité : deux demandes envoyées simultanément
+    // avec le même numéro, la seconde est rejetée par la base.
+    if (error?.code === "23505") {
+      return { error: "Ce numéro de reçu ECOBANK existe déjà pour une autre demande." };
+    }
+    return { error: "Erreur : " + (error?.message || "création impossible") };
+  }
 
   const ext = file.name.split(".").pop() || "jpg";
   const path = `${inserted.id}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
@@ -509,6 +532,21 @@ export async function updatePaymentRequestDetails(
     return { error: "Vous ne pouvez modifier que vos propres demandes." };
   }
 
+  // Unicité du numéro de reçu ECOBANK. La demande en cours de
+  // modification est exclue de la recherche : sans cela, conserver son
+  // propre numéro déclencherait un faux doublon.
+  const { data: duplicate } = await supabase
+    .from("payment_requests")
+    .select("id")
+    .eq("recu_ecobank", recu_ecobank)
+    .neq("id", requestId)
+    .limit(1)
+    .maybeSingle();
+
+  if (duplicate) {
+    return { error: "Ce numéro de reçu ECOBANK existe déjà pour une autre demande." };
+  }
+
   // Si une nouvelle capture est fournie, on remplace l'ancienne (une seule
   // preuve de paiement autorisée par demande, comme à la création).
   if (file && file.size > 0) {
@@ -558,7 +596,12 @@ export async function updatePaymentRequestDetails(
     .update({ amount, motif, recu_ecobank })
     .eq("id", requestId);
 
-  if (error) return { error: "Erreur : " + error.message };
+  if (error) {
+    if (error.code === "23505") {
+      return { error: "Ce numéro de reçu ECOBANK existe déjà pour une autre demande." };
+    }
+    return { error: "Erreur : " + error.message };
+  }
 
   revalidatePath(`/dashboard/students/${studentId}`);
   revalidatePath("/dashboard/requests");
