@@ -840,7 +840,7 @@ export async function regenerateReceipt(requestId: string, studentId: string) {
 
   const { data: requestRow } = await supabase
     .from("payment_requests")
-    .select("validated_at")
+    .select("validated_at, receipt_status")
     .eq("id", requestId)
     .single();
 
@@ -851,10 +851,16 @@ export async function regenerateReceipt(requestId: string, studentId: string) {
 
   // Action manuelle explicite : on réinitialise le compteur de tentatives
   // pour permettre à l'admin de relancer même après un échec définitif.
-  await supabase
-    .from("payment_requests")
-    .update({ receipt_attempts: 0, receipt_status: "none" })
-    .eq("id", requestId);
+  // Si le reçu avait déjà été généré, on oublie aussi la tâche iLoveAPI
+  // précédente : sinon son ancien PDF, encore téléchargeable quelques
+  // heures, serait simplement récupéré au lieu d'être refait avec le
+  // modèle actuel (Université ou Formation selon le niveau).
+  const reset: Record<string, unknown> = { receipt_attempts: 0, receipt_status: "none" };
+  if (requestRow.receipt_status === "success") {
+    reset.receipt_task_server = null;
+    reset.receipt_task_id = null;
+  }
+  await supabase.from("payment_requests").update(reset).eq("id", requestId);
 
   const { attemptReceiptGeneration } = await import(
     "@/lib/receipt/attemptReceiptGeneration"

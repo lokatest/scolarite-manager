@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { updateStudent } from "@/lib/actions/students";
-import { NIVEAU_OPTIONS } from "@/lib/niveaux";
+import { niveauOptionsFor } from "@/lib/niveaux";
 import SubmitButton from "./SubmitButton";
 import UppercaseInput from "./UppercaseInput";
 import type { Student } from "@/lib/types";
@@ -73,7 +73,7 @@ export default function EditStudentModal({
                 defaultValue={student.niveau}
                 className="w-full rounded-lg border border-[var(--tts-border)] px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--tts-blue)] bg-white"
               >
-                {NIVEAU_OPTIONS.map((n) => (
+                {niveauOptionsFor(student.niveau).map((n) => (
                   <option key={n} value={n}>
                     {n}
                   </option>

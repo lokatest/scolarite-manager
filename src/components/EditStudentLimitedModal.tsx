@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { updateStudent } from "@/lib/actions/students";
+import { niveauOptionsFor } from "@/lib/niveaux";
 import SubmitButton from "./SubmitButton";
 import UppercaseInput from "./UppercaseInput";
 import type { Student } from "@/lib/types";
@@ -38,7 +39,8 @@ export default function EditStudentLimitedModal({
           Modifier l&apos;étudiant
         </h2>
         <p className="text-xs text-[var(--tts-text-muted)] mb-5">
-          En tant que gestionnaire, vous pouvez uniquement modifier le matricule et la filière.
+          En tant que gestionnaire, vous pouvez modifier le matricule, la filière et le niveau.
+          Le nom complet reste réservé à l&apos;administrateur.
         </p>
         {error && (
           <div className="mb-4 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm px-3.5 py-2.5">
@@ -52,11 +54,30 @@ export default function EditStudentLimitedModal({
             </label>
             <UppercaseInput name="matricule" defaultValue={student.matricule} />
           </div>
-          <div>
-            <label className="block text-sm font-medium text-[var(--tts-dark)] mb-1.5">
-              Filière
-            </label>
-            <UppercaseInput name="filiere" defaultValue={student.filiere} />
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm font-medium text-[var(--tts-dark)] mb-1.5">
+                Filière
+              </label>
+              <UppercaseInput name="filiere" defaultValue={student.filiere} />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-[var(--tts-dark)] mb-1.5">
+                Niveau
+              </label>
+              <select
+                name="niveau"
+                required
+                defaultValue={student.niveau}
+                className="w-full rounded-lg border border-[var(--tts-border)] px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--tts-blue)] bg-white"
+              >
+                {niveauOptionsFor(student.niveau).map((n) => (
+                  <option key={n} value={n}>
+                    {n}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
           <div className="flex gap-3 pt-2">
             <button

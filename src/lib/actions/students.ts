@@ -2,6 +2,15 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
+import { isNiveauOfficiel } from "@/lib/niveaux";
+
+/** Libellés lisibles des champs, pour le journal d'activité. */
+const LIBELLES_CHAMPS: Record<string, string> = {
+  matricule: "matricule",
+  full_name: "nom",
+  filiere: "filière",
+  niveau: "niveau",
+};
 
 export async function createStudent(formData: FormData) {
   const matricule = String(formData.get("matricule") || "").trim().toUpperCase();
@@ -71,11 +80,14 @@ export async function searchStudents(query: string) {
 /**
  * Modifie les informations d'un étudiant.
  * - Administrateur : peut tout modifier (nom, matricule, filière, niveau).
- * - Gestionnaire : peut uniquement modifier le matricule et la filière.
+ * - Gestionnaire : peut modifier le matricule, la filière et le niveau.
+ *   Le nom complet reste réservé à l'administrateur (également verrouillé
+ *   en base par le trigger trg_restrict_student_update_fields).
  */
 export async function updateStudent(studentId: string, formData: FormData) {
   const matricule = String(formData.get("matricule") || "").trim().toUpperCase();
   const filiere = String(formData.get("filiere") || "").trim().toUpperCase();
+  const niveauSaisi = String(formData.get("niveau") || "").trim();
 
   if (!matricule || !filiere) {
     return { error: "Le matricule et la filière sont obligatoires." };
@@ -97,12 +109,37 @@ export async function updateStudent(studentId: string, formData: FormData) {
     return { error: "Action non autorisée." };
   }
 
-  let updatePayload: Record<string, string> = { matricule, filiere };
+  // État actuel de l'étudiant : sert à valider le niveau et à tracer
+  // précisément ce qui a changé dans le journal d'activité.
+  const { data: current } = await supabase
+    .from("students")
+    .select("matricule, full_name, filiere, niveau")
+    .eq("id", studentId)
+    .maybeSingle();
+  if (!current) return { error: "Cet étudiant n'existe plus." };
+  const avant: Record<string, string> = {
+    matricule: String(current.matricule ?? ""),
+    full_name: String(current.full_name ?? ""),
+    filiere: String(current.filiere ?? ""),
+    niveau: String(current.niveau ?? ""),
+  };
+
+  // Niveau absent du formulaire (page ouverte avant une mise à jour) :
+  // on conserve le niveau actuel au lieu de bloquer l'enregistrement.
+  const niveau = niveauSaisi || avant.niveau;
+
+  // Le niveau doit appartenir à la liste officielle. Seule exception : un
+  // ancien niveau hors liste laissé tel quel, pour ne pas empêcher la
+  // correction du matricule ou de la filière de cet étudiant.
+  if (!isNiveauOfficiel(niveau) && niveau !== avant.niveau) {
+    return { error: "Niveau invalide." };
+  }
+
+  let updatePayload: Record<string, string> = { matricule, filiere, niveau };
 
   if (profile.role === "admin") {
     const full_name = String(formData.get("full_name") || "").trim().toUpperCase();
-    const niveau = String(formData.get("niveau") || "").trim();
-    if (!full_name || !niveau) {
+    if (!full_name) {
       return { error: "Tous les champs sont obligatoires." };
     }
     updatePayload = { matricule, full_name, filiere, niveau };
@@ -113,6 +150,22 @@ export async function updateStudent(studentId: string, formData: FormData) {
   if (error) {
     if (error.code === "23505") return { error: "Ce matricule existe déjà." };
     return { error: "Erreur : " + error.message };
+  }
+
+  // Traçabilité : seuls les champs réellement modifiés sont journalisés,
+  // un enregistrement sans changement n'ajoute rien au journal.
+  const changements = Object.entries(updatePayload)
+    .filter(([champ, valeur]) => avant[champ] !== valeur)
+    .map(([champ, valeur]) => `${LIBELLES_CHAMPS[champ] ?? champ} ${avant[champ]} → ${valeur}`);
+
+  if (changements.length > 0) {
+    const { logActivity } = await import("@/lib/activityLog");
+    await logActivity({
+      userId: user.id,
+      userEmail: user.email ?? null,
+      eventType: "action",
+      detail: `Modification de l'étudiant ${avant.full_name} (${avant.matricule}) : ${changements.join(", ")}`,
+    });
   }
 
   revalidatePath("/dashboard/students");

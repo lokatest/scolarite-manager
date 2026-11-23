@@ -20,15 +20,34 @@ export async function GET(request: Request) {
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   );
 
-  const { data: pendingRequests } = await supabase
+  const { data: candidates } = await supabase
     .from("payment_requests")
-    .select("id")
+    .select("id, student:students(niveau)")
     .eq("status", "validee")
     .in("receipt_status", ["pending", "failed"])
     .lt("receipt_attempts", 3)
-    .limit(10);
+    .limit(50);
 
-  if (!pendingRequests || pendingRequests.length === 0) {
+  if (!candidates || candidates.length === 0) {
+    return NextResponse.json({ ok: true, processed: 0 });
+  }
+
+  // Les demandes dont le modèle (Université ou Formation) n'est pas encore
+  // chargé sont écartées : elles ne pourraient pas aboutir et prendraient
+  // la place de celles qui le peuvent. Leurs reçus seront générés dès le
+  // chargement du modèle (voir uploadReceiptTemplate).
+  const { getAvailableTemplateKinds } = await import("@/lib/receipt/getTemplateBytes");
+  const { templateKindForNiveau } = await import("@/lib/receipt/templateKinds");
+  const availableKinds = await getAvailableTemplateKinds(supabase);
+
+  const pendingRequests = candidates
+    .filter((req: { student: unknown }) => {
+      const student = req.student as { niveau: string | null } | null;
+      return availableKinds.has(templateKindForNiveau(student?.niveau));
+    })
+    .slice(0, 10);
+
+  if (pendingRequests.length === 0) {
     return NextResponse.json({ ok: true, processed: 0 });
   }
 

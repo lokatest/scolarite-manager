@@ -1,6 +1,11 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { startAndUpload, downloadResult } from "./iloveApi";
 import { getDatePartsCM } from "@/lib/formatDateTime";
+import {
+  RECEIPT_TEMPLATE_LABELS,
+  missingTemplateMessage,
+  templateKindForNiveau,
+} from "./templateKinds";
 
 const MAX_ATTEMPTS = 3;
 
@@ -71,6 +76,10 @@ async function generateFullReceipt(
  * connecté (contexte d'une action serveur classique), ou un client à
  * privilèges élevés (contexte d'une tâche planifiée sans session).
  *
+ * Le modèle Word est choisi d'après le niveau de l'étudiant au moment de
+ * la génération : « Formation » utilise le modèle Formation, les niveaux
+ * 1 à 5 le modèle Université.
+ *
  * Ne lève jamais d'exception : retourne toujours un statut.
  */
 export async function attemptReceiptGeneration(
@@ -80,7 +89,7 @@ export async function attemptReceiptGeneration(
   const { data: request } = await supabase
     .from("payment_requests")
     .select(
-      "amount, recu_ecobank, validated_at, receipt_attempts, receipt_task_server, receipt_task_id, student:students(full_name)"
+      "amount, recu_ecobank, validated_at, receipt_attempts, receipt_task_server, receipt_task_id, student:students(full_name, niveau)"
     )
     .eq("id", requestId)
     .single();
@@ -93,6 +102,30 @@ export async function attemptReceiptGeneration(
     return { success: false, error: "Nombre maximum de tentatives déjà atteint." };
   }
 
+  const studentInfo = request.student as unknown as {
+    full_name: string;
+    niveau: string | null;
+  } | null;
+  const templateKind = templateKindForNiveau(studentInfo?.niveau);
+
+  // Le modèle est vérifié AVANT de compter une tentative : un modèle pas
+  // encore chargé n'est pas un échec de génération (aucun appel iLoveAPI,
+  // aucun crédit consommé). La demande reste en attente, et son reçu sera
+  // généré dès que le modèle sera chargé (voir uploadReceiptTemplate),
+  // ou par la relance quotidienne.
+  const { getReceiptTemplatePath, downloadReceiptTemplate } = await import(
+    "@/lib/receipt/getTemplateBytes"
+  );
+  const templatePath = await getReceiptTemplatePath(supabase, templateKind);
+  if (!templatePath) {
+    const message = missingTemplateMessage(templateKind);
+    await supabase
+      .from("payment_requests")
+      .update({ receipt_status: "pending", receipt_last_error: message })
+      .eq("id", requestId);
+    return { success: false, error: message };
+  }
+
   const attemptsNow = (request.receipt_attempts ?? 0) + 1;
 
   await supabase
@@ -101,15 +134,12 @@ export async function attemptReceiptGeneration(
     .eq("id", requestId);
 
   try {
-    const { getReceiptTemplateBytesWithClient } = await import(
-      "@/lib/receipt/getTemplateBytes"
-    );
-    const templateBytes = await getReceiptTemplateBytesWithClient(supabase);
+    const templateBytes = await downloadReceiptTemplate(supabase, templatePath);
     if (!templateBytes) {
-      throw new Error("Aucun template Word n'a été chargé (Administration → Template du reçu).");
+      throw new Error(
+        `Impossible de lire le modèle de reçu « ${RECEIPT_TEMPLATE_LABELS[templateKind]} » depuis le stockage.`
+      );
     }
-
-    const studentInfo = request.student as unknown as { full_name: string } | null;
 
     let pdfBytes: Uint8Array;
     let reference: string | undefined;

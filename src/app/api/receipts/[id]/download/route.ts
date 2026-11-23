@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { isMissingTemplateMessage } from "@/lib/receipt/templateKinds";
 
 /**
  * Proxy de téléchargement du reçu PDF : télécharge le fichier depuis
@@ -32,7 +33,7 @@ export async function GET(
 
   const { data: paymentRequest } = await supabase
     .from("payment_requests")
-    .select("status, receipt_path")
+    .select("status, receipt_path, receipt_last_error")
     .eq("id", requestId)
     .single();
 
@@ -53,8 +54,13 @@ export async function GET(
     );
   }
   if (!paymentRequest.receipt_path) {
+    // Seule la raison « modèle non chargé » est précisée : les autres
+    // erreurs de génération sont techniques et restent internes.
+    const raison = isMissingTemplateMessage(paymentRequest.receipt_last_error)
+      ? ` ${paymentRequest.receipt_last_error}`
+      : "";
     return NextResponse.json(
-      { error: "Aucun reçu n'a été généré pour cette demande." },
+      { error: `Aucun reçu n'a été généré pour cette demande.${raison}` },
       { status: 404 }
     );
   }
